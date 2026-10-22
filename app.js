@@ -341,17 +341,17 @@ function itemRows(){
 function isAct(x){const a=S.from-1,b=S.to-1;if(x.oq[a]||x.ov[a]||x.bq[b]||x.bv[b])return true;for(let i=a;i<=b;i++){if(x.rq[i]||x.dq[i]||x.rv[i]||x.dv[i])return true;}return false;}
 const nAct=rows=>rows.filter(isAct).length;
 const cntTxt=rows=>'มีสต็อก/เคลื่อนไหว '+nf(nAct(rows))+' จาก '+nf(rows.length)+' รายการ';
-let DQ={};
+let DQ={},DQU={};
 const PIECE=['ชิ้น','คู่','อัน','เม็ด','แคปซูล','ซอง'];
 function dqCalc(){
-  DQ={};const a=S.from-1,b=S.to-1;
+  DQ={};DQU={};const a=S.from-1,b=S.to-1;
   const pr=x=>{for(let i=b;i>=a;i--){const P=[['bq','bv'],['dq','dv'],['rq','rv'],['oq','ov']];for(let j=0;j<P.length;j++){if(x[P[j][0]][i]>0&&x[P[j][1]][i]>0)return x[P[j][1]][i]/x[P[j][0]][i];}}return null;};
   const g={},gu={};D.forEach(x=>{x._p=pr(x);if(x._p){(g[x.pcat+'|'+x.unit]=g[x.pcat+'|'+x.unit]||[]).push(x._p);(gu[x.unit]=gu[x.unit]||[]).push(x._p);}});
   D.forEach(x=>{
     const r=[];
     if(x._p&&x._p>=200){const L=(g[x.pcat+'|'+x.unit]||[]).length>=5?g[x.pcat+'|'+x.unit]:gu[x.unit]||[];const m=d3.median(L);
       if(L.length>=5&&m>0&&x._p>=30*m)r.push({k:'price',ratio:x._p/m,txt:'ราคาต่อหน่วย '+nf(x._p)+' บาท สูงกว่ารายการหน่วย "'+x.unit+'" ในหมวดเดียวกันราว '+nf(x._p/m)+' เท่า (มัธยฐาน '+nf1(m)+' บาท) หน่วยนับหรือปริมาณอาจบันทึกเป็นกล่อง/แพ็ก'});}
-    if(/^box$/i.test(x.form||'')&&PIECE.indexOf(x.unit)>=0)r.push({k:'unit',ratio:0,txt:'ประเภท (TYPE) ในรายงานเป็น Box แต่หน่วยนับเป็น "'+x.unit+'" ปริมาณอาจนับเป็นกล่อง ทำให้ปริมาณและราคาต่อหน่วยคลาดเคลื่อน'});
+    if(/^box$/i.test(x.form||'')&&PIECE.indexOf(x.unit)>=0)DQU[x.id]=({k:'unit',ratio:0,txt:'ประเภท (TYPE) ในรายงานเป็น Box แต่หน่วยนับเป็น "'+x.unit+'" ปริมาณอาจนับเป็นกล่อง ทำให้ปริมาณและราคาต่อหน่วยคลาดเคลื่อน'});
     if(r.length)DQ[x.id]={reasons:r,ratio:Math.max.apply(null,r.map(z=>z.ratio)),price:x._p};
   });
 }
@@ -426,7 +426,7 @@ function renderDetail(){
   if(!x){host.hidden=true;host.innerHTML='';return;}
   host.hidden=false;host.className='hp-detail';
   const aq=agg([x],'q'),av=agg([x],'v'),st=stat(x),c=catBy[x.cat],pcn=pcBy[x.pcat];
-  host.innerHTML='<div class="hp-dh"><div><div class="hp-lab">'+esc(pcn?pcn.name:'')+' · กลุ่มโรค: '+esc(c?c.name:x.cat)+' · อาการ: '+esc(symBy[x.sym]?symBy[x.sym].name:'')+'</div><h2>'+esc(x.label)+'</h2><div class="hp-note">รหัส '+esc(x.code)+' · หน่วยนับ: '+esc(x.unit||'—')+(x.form?' · รูปแบบ: '+esc(x.form):'')+(+x.mpack?' · ขนาดบรรจุ: '+nf(+x.mpack):'')+'</div>'+(DQ[x.id]?'<div class="hp-note"><span class="hp-badge b-warn">ตรวจข้อมูล</span> '+esc(DQ[x.id].reasons.map(z=>z.txt).join(' · '))+'</div>':'')+'</div><div class="hp-inl"><span class="hp-badge '+st.c+'">'+st.t+'</span><button class="hp-btn" data-act="close">ปิด</button></div></div>'+
+  host.innerHTML='<div class="hp-dh"><div><div class="hp-lab">'+esc(pcn?pcn.name:'')+' · กลุ่มโรค: '+esc(c?c.name:x.cat)+' · อาการ: '+esc(symBy[x.sym]?symBy[x.sym].name:'')+'</div><h2>'+esc(x.label)+'</h2><div class="hp-note">รหัส '+esc(x.code)+' · หน่วยนับ: '+esc(x.unit||'—')+(x.form?' · รูปแบบ: '+esc(x.form):'')+(+x.mpack?' · ขนาดบรรจุ: '+nf(+x.mpack):'')+'</div>'+(DQ[x.id]?'<div class="hp-note"><span class="hp-badge b-warn">ตรวจข้อมูล</span> '+esc(DQ[x.id].reasons.map(z=>z.txt).join(' · '))+'</div>':'')+(DQU[x.id]?'<div class="hp-note">หมายเหตุ: '+esc(DQU[x.id].txt)+'</div>':'')+'</div><div class="hp-inl"><span class="hp-badge '+st.c+'">'+st.t+'</span><button class="hp-btn" data-act="close">ปิด</button></div></div>'+
     '<div class="hp-kpis">'+FLOW.map(f=>kpi(f.n+' ('+esc(rangeLabel())+')',nf(aq[f.k])+' <small>'+esc(x.unit)+'</small>',nf(av[f.k])+' บาท')).join('')+kpi('วันที่สต็อกพอใช้',fdos(st.dos),'ราคาต่อหน่วยเฉลี่ย '+(aq.b>0?nf1(av.b/aq.b):aq.d>0?nf1(av.d/aq.d):'—')+' บาท')+'</div>'+
     '<div class="hp-svg" id="dt-chart" style="min-height:230px"></div><div class="hp-tw" style="max-height:none" id="dt-tbl"></div>';
   const ser=[];for(let i=0;i<AV;i++)ser.push({o:x.oq[i],r:x.rq[i],d:x.dq[i],b:x.bq[i]});
@@ -464,12 +464,14 @@ function renderAlerts(){
   sm.push(['warn','ล้นสต็อก (พอใช้เกิน 180 วัน)',over.length+' รายการ มูลค่าคงเหลือรวม '+baht(overV)+' บาท']);
   sm.push(['info','มีของแต่ไม่เคลื่อนไหว',idle.length+' รายการ มูลค่ารวม '+baht(idleV)+' บาท ควรทบทวนวันหมดอายุและความจำเป็น']);
   sm.push([dq.length?'warn':'ok','ราคาต่อหน่วย/หน่วยนับที่ควรตรวจ',dq.length?dq.length+' รายการ (ดูส่วนแรกด้านล่าง) ตัวเลขปริมาณและวัน/สต็อกของรายการเหล่านี้อาจคลาดเคลื่อน':'ไม่พบรายการที่ราคาต่อหน่วยหรือหน่วยนับผิดปกติตามเกณฑ์']);
+  const nU=info.filter(o=>DQU[o.x.id]).length;
+  if(nU)sm.push(['info','ประเภท Box แต่หน่วยนับเป็นชิ้น/คู่ (สัญญาณรอง)',nU+' รายการ ส่วนใหญ่ราคาต่อชิ้นปกติ ดูหมายเหตุในหน้ารายละเอียดของรายการ']);
   sm.push([mism.length||neg.length?'bad':'ok','ตรวจความถูกต้องของข้อมูล',mism.length?mism.length+' รายการสมการ ยกมา+รับ−จ่าย≠คงเหลือ':'สมการ ยกมา + รับ − จ่าย = คงเหลือ ลงตัวทุกรายการ'+(neg.length?' · ยอดติดลบ '+neg.length+' รายการ':' · ไม่พบยอดติดลบ')+(blankV.length?' · มีของแต่มูลค่าเป็นว่าง/0 '+blankV.length+' รายการ':'')]);
   $('#al-sum').innerHTML=sm.map(a=>'<div class="hp-in '+(a[0]==='info'?'':a[0])+'"><i></i><div><b>'+a[1]+'</b> · '+a[2]+'</div></div>').join('');
   const sec=(t,n,items,cnt)=>'<div class="hp-card"><h2>'+t+' <span class="hp-mut">('+(cnt!=null?cnt:items.length)+')</span></h2><p class="hp-note">'+n+'</p>'+(items.length?'<div class="hp-grid w2">'+items.join('')+'</div>':'<div class="hp-empty">ไม่พบรายการตามเกณฑ์ในตัวกรองนี้</div>')+'</div>';
   const lim=a=>a.slice(0,12);
   let h='';
-  h+=sec('ข้อมูลที่ควรตรวจ: ราคาต่อหน่วยและหน่วยนับ','ตรวจอัตโนมัติจาก (1) ราคาต่อหน่วยตั้งแต่ 200 บาทและสูงกว่ามัธยฐานของรายการหน่วยเดียวกันในหมวดเดียวกันตั้งแต่ 30 เท่า (2) ประเภทในรายงานเป็น Box แต่หน่วยนับเป็นชิ้น/คู่/อัน ฯลฯ · เป็นสัญญาณให้ผู้ดูแลคลังตรวจกับต้นฉบับ ไม่ใช่ข้อสรุป · ยาราคาสูงจริง (เช่น ฝังคุมกำเนิด) อาจติดเกณฑ์ได้',lim(dq).map(o=>alertCard('ตรวจข้อมูล','b-warn',o.x,esc(DQ[o.x.id].reasons.map(z=>z.txt).join(' · '))+' · คงเหลือ '+nf(o.q.b)+' '+esc(o.x.unit)+' ('+nf(o.v.b)+' บาท)')),dq.length);
+  h+=sec('ข้อมูลที่ควรตรวจ: ราคาต่อหน่วยและหน่วยนับ','ตรวจอัตโนมัติจากราคาต่อหน่วยตั้งแต่ 200 บาทและสูงกว่ามัธยฐานของรายการหน่วยเดียวกันในหมวดเดียวกันตั้งแต่ 30 เท่า (รายการที่ประเภทเป็น Box แต่หน่วยนับเป็นชิ้น/คู่ ไม่ถือเป็นข้อมูลผิดโดยตรง สรุปแยกไว้ด้านบน) · เป็นสัญญาณให้ผู้ดูแลคลังตรวจกับต้นฉบับ ไม่ใช่ข้อสรุป · ยาราคาสูงจริง (เช่น ฝังคุมกำเนิด) อาจติดเกณฑ์ได้',lim(dq).map(o=>alertCard('ตรวจข้อมูล','b-warn',o.x,esc(DQ[o.x.id].reasons.map(z=>z.txt).join(' · '))+' · คงเหลือ '+nf(o.q.b)+' '+esc(o.x.unit)+' ('+nf(o.v.b)+' บาท)')),dq.length);
   h+=sec('หมดสต็อกแต่ยังมีการจ่าย','คงเหลือสิ้นช่วงเป็น 0 แต่มีการจ่ายออกในช่วง เรียงตามมูลค่าที่จ่าย ตรวจว่ากำลังรอสั่ง/รอรับหรือควรเร่งจัดซื้อ',lim(out).map(o=>alertCard('หมดสต็อก','b-bad',o.x,'จ่ายในช่วง <b>'+nf(o.q.d)+' '+esc(o.x.unit)+'</b> ('+nf(o.v.d)+' บาท) · รับเข้า '+nf(o.q.r)+' · ยกมา '+nf(o.q.o)+' · คงเหลือ <b>0</b>')),out.length);
   h+=sec('พอใช้ไม่ถึง 30 วัน','คงเหลือหารด้วยอัตราจ่ายต่อวันของช่วงที่เลือก เรียงจากน้อยไปมาก',lim(low).map(o=>alertCard('ใกล้หมด','b-warn',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> พอใช้ประมาณ <b>'+nf(o.st.dos)+' วัน</b> (อัตราจ่ายเฉลี่ย '+nf(o.q.dk/o.q.dayk*30)+' '+esc(o.x.unit)+'/เดือน)')),low.length);
   h+=sec('ล้นสต็อก (พอใช้เกิน 180 วัน)','มีการจ่ายแต่คงเหลือมากเมื่อเทียบกับอัตราจ่าย เรียงตามมูลค่าคงเหลือ อาจเป็นยาสั่งเป็นล็อตหรือใช้ตามฤดูกาล',lim(over).map(o=>alertCard('ล้นสต็อก','b-warn',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> ('+nf(o.v.b)+' บาท) พอใช้ประมาณ <b>'+(isFinite(o.st.dos)?nf(o.st.dos)+' วัน':'—')+'</b> จ่าย '+nf(o.q.d)+' ในช่วง')),over.length);
