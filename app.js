@@ -144,7 +144,7 @@ function rebuildRange(){
   $('#hp-from').innerHTML=MON.map((_,i)=>opt(i)).join('');
   $('#hp-to').innerHTML=MON.map((_,i)=>opt(i)).join('');
   const f=MON[0],l=MON[AV-1];
-  $('#hp-sub').textContent='ปีงบประมาณ '+S.fy+' · '+f.full+' '+f.year+' – '+l.full+' '+l.year+(AV<MON.length?' (มีข้อมูลถึงเดือนล่าสุด)':'')+' · '+nf(D.length)+' รายการ · แหล่งข้อมูล: รายงานสรุปยอดคงเหลือเวชภัณฑ์ (ยกมา/รับ/จ่าย/คงเหลือ) รายเดือน';
+  $('#hp-sub').textContent='ปีงบประมาณ '+S.fy+' · '+f.full+' '+f.year+' – '+l.full+' '+l.year+(AV<MON.length?' (มีข้อมูลถึงเดือนล่าสุด)':'')+' · '+nf(D.length)+' รายการในรายงาน · แหล่งข้อมูล: รายงานสรุปยอดคงเหลือเวชภัณฑ์ (ยกมา/รับ/จ่าย/คงเหลือ) รายเดือน';
   const yr=FYS.length>1?FYS[0]+'–'+FYS[FYS.length-1]:String(FYS[0]);
   ['#hp-fy-t','#hp-fy-e'].forEach(q=>{const e=$(q);if(e)e.textContent=yr;});
   const hl=ALLM.filter(x=>x.has).pop(),ft=$('#ft-last');if(ft&&hl)ft.textContent='(ข้อมูลล่าสุด: '+hl.full+' '+hl.year+')';
@@ -153,9 +153,10 @@ function buildChips(){
   const cnt={};D.forEach(x=>{cnt[x.pcat]=(cnt[x.pcat]||0)+1;});
   $('#hp-chips-p').innerHTML='<button class="hp-chip" data-act="pc" data-k="ALL" aria-pressed="false">ทุกหมวด ('+nf(D.length)+')</button>'+PC.map(p=>'<button class="hp-chip" data-act="pc" data-k="'+esc(p.code)+'" title="'+esc(p.name)+'" aria-pressed="false">'+esc(p.short)+' ('+nf(cnt[p.code]||0)+')</button>').join('');
   const used={};D.forEach(x=>{used[gk(x)]=1;});
-  const gl=GR().filter(g=>used[g.code]);
+  const gl=GR().filter(g=>used[g.code]&&g.code.indexOf('sup_')!==0),gs2=GR().filter(g=>used[g.code]&&g.code.indexOf('sup_')===0);
+  $('#hp-chips-s').innerHTML=gs2.map(g=>'<button class="hp-chip" data-act="view" data-k="'+esc(g.code)+'" title="'+esc(g.name)+'" aria-pressed="false">'+esc(g.short)+'</button>').join('');
   $('#hp-chips-a').innerHTML='<button class="hp-chip" data-act="view" data-k="ALL" aria-pressed="false">ทุกกลุ่ม</button>'+gl.map(g=>'<button class="hp-chip" data-act="view" data-k="'+esc(g.code)+'" title="'+esc(g.name)+'" aria-pressed="false">'+esc(g.short)+'</button>').join('');
-  $('#hp-la').textContent=S.mode==='sym'?'ยาตามอาการ / ข้อบ่งใช้':'กลุ่มโรค / คลินิก';
+  $('#hp-la').textContent=S.mode==='sym'?'ยาตามอาการ / ข้อบ่งใช้':'กลุ่มโรค / คลินิก (ยา)';
 }
 function setMode(m){S.mode=m;S.view='ALL';S.limit=80;buildChips();}
 function viewName(){if(S.view==='ALL')return 'ทุกกลุ่ม';const g=(S.mode==='sym'?symBy:catBy)[S.view];return g?g.short:S.view;}
@@ -168,11 +169,11 @@ function syncControls(){
   $('#hp-unitg').hidden=S.m!=='q';$('#hp-unit').value=S.unit;
   $$('#hp-mode button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===S.mode)));
   $$('#hp-chips-p .hp-chip').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.k===S.pc)));
-  $$('#hp-chips-a .hp-chip').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.k===S.view)));
+  $$('#hp-chips-a .hp-chip,#hp-chips-s .hp-chip').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.k===S.view)));
   $$('#hp-tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===S.tab)));
   $('#hp-act').setAttribute('aria-pressed',String(S.active));
   const rows=scope(),a=agg(rows);
-  $('#hp-ctx').innerHTML='กำลังดู: <b>'+esc(scopeName())+'</b> · <b>'+esc(rangeLabel())+'</b> · '+(S.m==='q'?'ปริมาณหน่วย <b>'+esc(S.unit)+'</b>':'มูลค่า')+' · คงเหลือ <b>'+fmtM(a.b)+' '+unitTxt()+'</b> · '+nf(rows.length)+' รายการ'+(S.m==='q'?' <span class="hp-unitnote">(ปริมาณรวมได้เฉพาะรายการที่หน่วยนับเดียวกัน)</span>':'');
+  $('#hp-ctx').innerHTML='กำลังดู: <b>'+esc(scopeName())+'</b> · <b>'+esc(rangeLabel())+'</b> · '+(S.m==='q'?'ปริมาณหน่วย <b>'+esc(S.unit)+'</b>':'มูลค่า')+' · คงเหลือ <b>'+fmtM(a.b)+' '+unitTxt()+'</b> · '+cntTxt(rows)+(S.m==='q'?' <span class="hp-unitnote">(ปริมาณรวมได้เฉพาะรายการที่หน่วยนับเดียวกัน)</span>':'');
   ['overview','cats','groups','abc','items','alerts'].forEach(t=>{$('#hp-'+t).hidden=S.tab!==t;});
   heroRender(rows,a);
 }
@@ -235,13 +236,13 @@ function flowCells(a,m,withDos){
 }
 function pcTable(host){
   const rows=filt({view:1,unit:1});
-  let h='<table><thead><tr><th>หมวดสินค้า</th><th>รายการ</th><th></th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>สัดส่วนคงเหลือ</th><th>วันที่พอใช้</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>หมวดสินค้า</th><th>รายการ (เคลื่อนไหว / ทั้งหมด)</th><th></th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>สัดส่วนคงเหลือ</th><th>วันที่พอใช้</th></tr></thead><tbody>';
   const tot=agg(rows);
   PC.forEach(p=>{
     const rs=rows.filter(x=>x.pcat===p.code),a=agg(rs);
-    h+='<tr data-act="pc" data-k="'+esc(p.code)+'"'+(S.pc===p.code?' class="sel"':'')+'><td title="'+esc(p.name)+'">'+esc(p.name)+'</td><td>'+nf(rs.length)+'</td><td class="u">'+unitTxt()+'</td>'+flowCells(a)+'<td>'+(tot.b?pct(a.b/tot.b,1):'—')+'</td><td>'+fdos(dos(a))+'</td></tr>';
+    h+='<tr data-act="pc" data-k="'+esc(p.code)+'"'+(S.pc===p.code?' class="sel"':'')+'><td title="'+esc(p.name)+'">'+esc(p.name)+'</td><td>'+nf(nAct(rs))+' <small class="hp-mut">/ '+nf(rs.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(a)+'<td>'+(tot.b?pct(a.b/tot.b,1):'—')+'</td><td>'+fdos(dos(a))+'</td></tr>';
   });
-  h+='<tr class="tot"><td>รวม</td><td>'+nf(rows.length)+'</td><td class="u">'+unitTxt()+'</td>'+flowCells(tot)+'<td>100%</td><td>'+fdos(dos(tot))+'</td></tr></tbody></table>';
+  h+='<tr class="tot"><td>รวม</td><td>'+nf(nAct(rows))+' <small class="hp-mut">/ '+nf(rows.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(tot)+'<td>100%</td><td>'+fdos(dos(tot))+'</td></tr></tbody></table>';
   host.innerHTML=h;
 }
 
@@ -290,9 +291,9 @@ function renderCats(){
     const us=Object.keys(uq).filter(u=>uq[u].b>0||uq[u].d>0||uq[u].r>0).sort((x,y)=>uq[y].b-uq[x].b).slice(0,3);
     const empty=rs.length===0;
     return '<button class="hp-gc" style="--i:'+i+';border-top:3px solid '+col(i)+'" data-act="pc" data-k="'+esc(p.code)+'" data-tip="'+esc(p.name+'\nกดเพื่อกรองเฉพาะหมวดนี้')+'"><span class="t">'+esc(p.name)+'</span>'+
-      (empty?'<span class="hp-mut">ไม่มีรายการในรายงานช่วงนี้</span>':'<span class="v">'+baht(a.b)+' <small class="hp-mut">บาท คงเหลือ</small></span><span class="fl"><span>ยกมา</span><span>'+baht(a.o)+'</span><span>รับ</span><span>'+baht(a.r)+'</span><span>จ่าย</span><span>'+baht(a.d)+'</span></span><span class="tp">'+nf(rs.length)+' รายการ'+(us.length?' · คงเหลือ: '+us.map(u=>esc(u)+' '+nf(uq[u].b)).join(' · '):'')+'</span>')+'</button>';}).join('');
+      (empty?'<span class="hp-mut">ไม่มีรายการในรายงานช่วงนี้</span>':'<span class="v">'+baht(a.b)+' <small class="hp-mut">บาท คงเหลือ</small></span><span class="fl"><span>ยกมา</span><span>'+baht(a.o)+'</span><span>รับ</span><span>'+baht(a.r)+'</span><span>จ่าย</span><span>'+baht(a.d)+'</span></span><span class="tp">'+nf(nAct(rs))+' จาก '+nf(rs.length)+' รายการที่เคลื่อนไหว'+(us.length?' · คงเหลือ: '+us.map(u=>esc(u)+' '+nf(uq[u].b)).join(' · '):'')+'</span>')+'</button>';}).join('');
   $('#ct-n').textContent='ปริมาณแสดงแยกตามหน่วยนับ (รวมข้ามหน่วยไม่ได้) · มูลค่าเป็นบาท · แสดงหน่วยนับที่มีความเคลื่อนไหวหรือมียอดคงเหลือ · กลุ่ม: '+viewName()+' · '+rangeLabel();
-  let h='<table><thead><tr><th>หมวดสินค้า</th><th>หน่วยนับ</th><th>รายการ</th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>ยกมา (บาท)</th><th>รับ (บาท)</th><th>จ่าย (บาท)</th><th>คงเหลือ (บาท)</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>หมวดสินค้า</th><th>หน่วยนับ</th><th>รายการทั้งหมด</th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>ยกมา (บาท)</th><th>รับ (บาท)</th><th>จ่าย (บาท)</th><th>คงเหลือ (บาท)</th></tr></thead><tbody>';
   PC.forEach(p=>{
     const rs=rows.filter(x=>x.pcat===p.code);
     if(!rs.length){h+='<tr><td>'+esc(p.name)+'</td><td colspan="10" class="hp-mut">ไม่มีรายการในรายงานช่วงนี้</td></tr>';return;}
@@ -311,7 +312,7 @@ function renderCats(){
 function renderGroups(){
   const base=filt({pc:1,unit:1}),m=S.m;
   const all=agg(base);
-  const gs=GR().map(g=>{const rs=base.filter(x=>gk(x)===g.code);return {g:g,rs:rs,a:agg(rs),n:rs.length};}).filter(o=>o.n>0).sort((p,q)=>q.a.b-p.a.b);
+  const gs=GR().map(g=>{const rs=base.filter(x=>gk(x)===g.code);return {g:g,rs:rs,a:agg(rs),n:rs.length,na:nAct(rs)};}).filter(o=>o.n>0).sort((p,q)=>q.a.b-p.a.b);
   const topG=gs[0];
   headline($('#gr-head'),'info','<span class="hp-hl-t">เทียบกลุ่ม'+(S.mode==='sym'?'อาการ':'โรค')+' · '+esc(S.pc==='ALL'?'ทุกหมวด':pcBy[S.pc].short)+' · '+esc(rangeLabel())+'</span> '+(topG&&all.b?'กลุ่มที่คงเหลือมากสุด: <b>'+esc(topG.g.short)+'</b> '+fmtM(topG.a.b)+' '+unitTxt()+' ('+pct(topG.a.b/all.b,0)+')':'ไม่มีข้อมูลในตัวกรองนี้'));
   $('#gr-bars-h').textContent='คงเหลือและจ่ายออกตามกลุ่ม'+(S.mode==='sym'?'อาการ':'โรค');
@@ -320,9 +321,9 @@ function renderGroups(){
   const host=$('#gr-bars');
   host.innerHTML=gs.length?gs.map((o,i)=>'<div style="display:grid;gap:2px;margin-bottom:6px"><button class="hp-hb" data-act="view" data-k="'+esc(o.g.code)+'" data-tip="'+esc(o.g.name+'\nคงเหลือ '+fmtM(o.a.b)+'\nจ่าย '+fmtM(o.a.d))+'"><span class="hp-hb-l">'+esc(o.g.short)+'</span><span class="hp-hb-t"><i style="--i:'+i+';width:'+Math.max(1,o.a.b/mx*100).toFixed(1)+'%;background:'+fcol('b')+'"></i></span><span class="hp-hb-v">'+fmtM(o.a.b)+'</span></button><button class="hp-hb" data-act="view" data-k="'+esc(o.g.code)+'"><span class="hp-hb-l hp-mut">จ่าย</span><span class="hp-hb-t"><i style="--i:'+i+';width:'+Math.max(1,o.a.d/mx*100).toFixed(1)+'%;background:'+fcol('d')+'"></i></span><span class="hp-hb-v hp-mut">'+fmtM(o.a.d)+'</span></button></div>').join(''):'<div class="hp-empty">ไม่มีข้อมูล</div>';
   $('#gr-tn').textContent='ตามหมวดที่เลือก ('+(S.pc==='ALL'?'ทุกหมวด':pcBy[S.pc].name)+')'+(m==='q'?' หน่วยนับ '+S.unit:'')+' · วันที่พอใช้ = คงเหลือ ÷ อัตราจ่ายต่อวัน · กดแถวเพื่อเลือกกลุ่ม';
-  let h='<table><thead><tr><th>กลุ่ม</th><th>รายการ</th><th></th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>สัดส่วนคงเหลือ</th><th>วันที่พอใช้</th></tr></thead><tbody>';
-  gs.forEach(o=>{h+='<tr data-act="view" data-k="'+esc(o.g.code)+'"'+(S.view===o.g.code?' class="sel"':'')+'><td title="'+esc(o.g.name)+'">'+esc(o.g.name)+'</td><td>'+nf(o.n)+'</td><td class="u">'+unitTxt()+'</td>'+flowCells(o.a)+'<td>'+(all.b?pct(o.a.b/all.b,1):'—')+'</td><td>'+fdos(dos(o.a))+'</td></tr>';});
-  h+='<tr class="tot"><td>รวม</td><td>'+nf(base.length)+'</td><td class="u">'+unitTxt()+'</td>'+flowCells(all)+'<td>100%</td><td>'+fdos(dos(all))+'</td></tr></tbody></table>';
+  let h='<table><thead><tr><th>กลุ่ม</th><th>รายการ (เคลื่อนไหว / ทั้งหมด)</th><th></th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>สัดส่วนคงเหลือ</th><th>วันที่พอใช้</th></tr></thead><tbody>';
+  gs.forEach(o=>{h+='<tr data-act="view" data-k="'+esc(o.g.code)+'"'+(S.view===o.g.code?' class="sel"':'')+'><td title="'+esc(o.g.name)+'">'+esc(o.g.name)+'</td><td>'+nf(o.na)+' <small class="hp-mut">/ '+nf(o.n)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(o.a)+'<td>'+(all.b?pct(o.a.b/all.b,1):'—')+'</td><td>'+fdos(dos(o.a))+'</td></tr>';});
+  h+='<tr class="tot"><td>รวม</td><td>'+nf(nAct(base))+' <small class="hp-mut">/ '+nf(base.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(all)+'<td>100%</td><td>'+fdos(dos(all))+'</td></tr></tbody></table>';
   $('#gr-tbl').innerHTML=h;
 }
 
@@ -337,6 +338,24 @@ function itemRows(){
   list.sort((a,b)=>{const A=gv(a),B=gv(b);return (A<B?-1:A>B?1:0)*dr;});
   return list;
 }
+function isAct(x){const a=S.from-1,b=S.to-1;if(x.oq[a]||x.ov[a]||x.bq[b]||x.bv[b])return true;for(let i=a;i<=b;i++){if(x.rq[i]||x.dq[i]||x.rv[i]||x.dv[i])return true;}return false;}
+const nAct=rows=>rows.filter(isAct).length;
+const cntTxt=rows=>'มีสต็อก/เคลื่อนไหว '+nf(nAct(rows))+' จาก '+nf(rows.length)+' รายการ';
+let DQ={};
+const PIECE=['ชิ้น','คู่','อัน','เม็ด','แคปซูล','ซอง'];
+function dqCalc(){
+  DQ={};const a=S.from-1,b=S.to-1;
+  const pr=x=>{for(let i=b;i>=a;i--){const P=[['bq','bv'],['dq','dv'],['rq','rv'],['oq','ov']];for(let j=0;j<P.length;j++){if(x[P[j][0]][i]>0&&x[P[j][1]][i]>0)return x[P[j][1]][i]/x[P[j][0]][i];}}return null;};
+  const g={},gu={};D.forEach(x=>{x._p=pr(x);if(x._p){(g[x.pcat+'|'+x.unit]=g[x.pcat+'|'+x.unit]||[]).push(x._p);(gu[x.unit]=gu[x.unit]||[]).push(x._p);}});
+  D.forEach(x=>{
+    const r=[];
+    if(x._p&&x._p>=200){const L=(g[x.pcat+'|'+x.unit]||[]).length>=5?g[x.pcat+'|'+x.unit]:gu[x.unit]||[];const m=d3.median(L);
+      if(L.length>=5&&m>0&&x._p>=30*m)r.push({k:'price',ratio:x._p/m,txt:'ราคาต่อหน่วย '+nf(x._p)+' บาท สูงกว่ารายการหน่วย "'+x.unit+'" ในหมวดเดียวกันราว '+nf(x._p/m)+' เท่า (มัธยฐาน '+nf1(m)+' บาท) หน่วยนับหรือปริมาณอาจบันทึกเป็นกล่อง/แพ็ก'});}
+    if(/^box$/i.test(x.form||'')&&PIECE.indexOf(x.unit)>=0)r.push({k:'unit',ratio:0,txt:'ประเภท (TYPE) ในรายงานเป็น Box แต่หน่วยนับเป็น "'+x.unit+'" ปริมาณอาจนับเป็นกล่อง ทำให้ปริมาณและราคาต่อหน่วยคลาดเคลื่อน'});
+    if(r.length)DQ[x.id]={reasons:r,ratio:Math.max.apply(null,r.map(z=>z.ratio)),price:x._p};
+  });
+}
+const dqBadge=x=>DQ[x.id]?' <span class="hp-badge b-warn" title="'+esc(DQ[x.id].reasons.map(z=>z.txt).join(' / '))+'">ตรวจข้อมูล</span>':'';
 function abcCalc(rows){
   const L=rows.map(x=>{const v=agg([x],'v'),q=agg([x],'q'),st=stat(x);return {x:x,dv:v.d,bv:v.b,v:v,q:q,st:st};});
   const act=L.filter(o=>o.dv>0).sort((p,q)=>q.dv-p.dv);const tot=sum(act.map(o=>o.dv));let cum=0;const map={};
@@ -363,7 +382,7 @@ function renderAbc(){
   $('#ab-th').textContent='รายการชั้น '+(ABCF==='N'?'ไม่มีการจ่าย':ABCF)+' ('+nf(L.length)+')';
   $('#ab-tn').textContent=(ABCF==='A'?'รายการที่ควรดูแลใกล้ชิดที่สุด: ตรวจจุดสั่งซื้อและไม่ให้ขาด':ABCF==='C'?'รายการมูลค่าจ่ายต่ำ ลดความถี่ตรวจนับ/สั่งซื้อได้ แต่ระวังล้นสต็อก':ABCF==='N'?'มีรายการในรายงานแต่ไม่จ่ายเลย เรียงตามมูลค่าคงเหลือ':'')+' · กดแถวเพื่อดูรายเดือน · แสดงสูงสุด 100 รายการ';
   let h='<table><thead><tr><th>ชื่อ / ความแรง</th><th>หมวด</th><th>อันดับ</th><th>หน่วย</th><th>จ่าย</th><th>% สะสม</th><th>คงเหลือ</th><th>วันที่พอใช้</th><th>สถานะ</th></tr></thead><tbody>';
-  L.slice(0,100).forEach(o=>{const x=o.x;h+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+'<small>'+esc(x.code)+'</small></td><td>'+esc(pcBy[x.pcat]?pcBy[x.pcat].short:'')+'</td><td>'+(o.rank?nf(o.rank):'—')+'</td><td class="u">'+esc(x.unit)+'</td><td>'+nf(o.q.d)+'<small>'+nf(o.dv)+' บาท</small></td><td>'+(o.cum==null?'—':pct(o.cum,1))+'</td><td>'+nf(o.q.b)+'<small>'+nf(o.bv)+' บาท</small></td><td>'+fdos(o.st.dos)+'</td><td><span class="hp-badge '+o.st.c+'">'+o.st.t+'</span></td></tr>';});
+  L.slice(0,100).forEach(o=>{const x=o.x;h+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+dqBadge(x)+'<small>'+esc(x.code)+'</small></td><td>'+esc(pcBy[x.pcat]?pcBy[x.pcat].short:'')+'</td><td>'+(o.rank?nf(o.rank):'—')+'</td><td class="u">'+esc(x.unit)+'</td><td>'+nf(o.q.d)+'<small>'+nf(o.dv)+' บาท</small></td><td>'+(o.cum==null?'—':pct(o.cum,1))+'</td><td>'+nf(o.q.b)+'<small>'+nf(o.bv)+' บาท</small></td><td>'+fdos(o.st.dos)+'</td><td><span class="hp-badge '+o.st.c+'">'+o.st.t+'</span></td></tr>';});
   $('#ab-tbl').innerHTML=L.length?h+'</tbody></table>':'<div class="hp-empty">ไม่มีรายการ</div>';
 }
 function paretoChart(host,act){
@@ -393,7 +412,7 @@ function renderItems(){
   let h='<table><thead><tr>'+th('label','ชื่อ / ความแรง')+th('pcat','หมวด')+th('cat','กลุ่ม')+th('unit','หน่วย')+'<th>ABC</th>'+th('oq','ยกมา')+th('rq','รับ')+th('dq','จ่าย')+th('bq','คงเหลือ')+th('dos','วันที่พอใช้')+th('st','สถานะ')+'</tr></thead><tbody>';
   list.slice(0,S.limit).forEach(o=>{
     const x=o.x,pcn=pcBy[x.pcat];
-    h+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+'<small>'+esc(x.code)+'</small></td><td>'+esc(pcn?pcn.short:'')+'</td><td>'+esc(gshort(x))+'</td><td class="u">'+esc(x.unit)+'</td><td>'+(abcm[x.id]?'<span class="hp-badge" style="color:'+ABCC[abcm[x.id].cls]()+'">'+(abcm[x.id].cls==='N'?'-':abcm[x.id].cls)+'</span>':'')+'</td>'+
+    h+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+dqBadge(x)+'<small>'+esc(x.code)+'</small></td><td>'+esc(pcn?pcn.short:'')+'</td><td>'+esc(gshort(x))+'</td><td class="u">'+esc(x.unit)+'</td><td>'+(abcm[x.id]?'<span class="hp-badge" style="color:'+ABCC[abcm[x.id].cls]()+'">'+(abcm[x.id].cls==='N'?'-':abcm[x.id].cls)+'</span>':'')+'</td>'+
       ['o','r','d','b'].map(f=>'<td>'+nf(o[f+'q'])+'<small>'+nf(o[f+'v'])+'</small></td>').join('')+'<td>'+fdos(o.st.dos)+'</td><td><span class="hp-badge '+o.st.c+'">'+o.st.t+'</span></td></tr>';
   });
   h+='</tbody></table>';
@@ -407,7 +426,7 @@ function renderDetail(){
   if(!x){host.hidden=true;host.innerHTML='';return;}
   host.hidden=false;host.className='hp-detail';
   const aq=agg([x],'q'),av=agg([x],'v'),st=stat(x),c=catBy[x.cat],pcn=pcBy[x.pcat];
-  host.innerHTML='<div class="hp-dh"><div><div class="hp-lab">'+esc(pcn?pcn.name:'')+' · กลุ่มโรค: '+esc(c?c.name:x.cat)+' · อาการ: '+esc(symBy[x.sym]?symBy[x.sym].name:'')+'</div><h2>'+esc(x.label)+'</h2><div class="hp-note">รหัส '+esc(x.code)+' · หน่วยนับ: '+esc(x.unit||'—')+(x.form?' · รูปแบบ: '+esc(x.form):'')+(+x.mpack?' · ขนาดบรรจุ: '+nf(+x.mpack):'')+'</div></div><div class="hp-inl"><span class="hp-badge '+st.c+'">'+st.t+'</span><button class="hp-btn" data-act="close">ปิด</button></div></div>'+
+  host.innerHTML='<div class="hp-dh"><div><div class="hp-lab">'+esc(pcn?pcn.name:'')+' · กลุ่มโรค: '+esc(c?c.name:x.cat)+' · อาการ: '+esc(symBy[x.sym]?symBy[x.sym].name:'')+'</div><h2>'+esc(x.label)+'</h2><div class="hp-note">รหัส '+esc(x.code)+' · หน่วยนับ: '+esc(x.unit||'—')+(x.form?' · รูปแบบ: '+esc(x.form):'')+(+x.mpack?' · ขนาดบรรจุ: '+nf(+x.mpack):'')+'</div>'+(DQ[x.id]?'<div class="hp-note"><span class="hp-badge b-warn">ตรวจข้อมูล</span> '+esc(DQ[x.id].reasons.map(z=>z.txt).join(' · '))+'</div>':'')+'</div><div class="hp-inl"><span class="hp-badge '+st.c+'">'+st.t+'</span><button class="hp-btn" data-act="close">ปิด</button></div></div>'+
     '<div class="hp-kpis">'+FLOW.map(f=>kpi(f.n+' ('+esc(rangeLabel())+')',nf(aq[f.k])+' <small>'+esc(x.unit)+'</small>',nf(av[f.k])+' บาท')).join('')+kpi('วันที่สต็อกพอใช้',fdos(st.dos),'ราคาต่อหน่วยเฉลี่ย '+(aq.b>0?nf1(av.b/aq.b):aq.d>0?nf1(av.d/aq.d):'—')+' บาท')+'</div>'+
     '<div class="hp-svg" id="dt-chart" style="min-height:230px"></div><div class="hp-tw" style="max-height:none" id="dt-tbl"></div>';
   const ser=[];for(let i=0;i<AV;i++)ser.push({o:x.oq[i],r:x.rq[i],d:x.dq[i],b:x.bq[i]});
@@ -434,6 +453,7 @@ function renderAlerts(){
   const mism=info.filter(o=>Math.abs(o.q.o+o.q.r-o.q.d-o.q.b)>0.01||Math.abs(o.v.o+o.v.r-o.v.d-o.v.b)>1);
   const neg=info.filter(o=>o.q.b<0||o.v.b<0||o.q.d<0||o.q.r<0);
   const blankV=info.filter(o=>o.q.b>0&&o.v.b===0);
+  const dq=info.filter(o=>DQ[o.x.id]).sort((p,q)=>DQ[q.x.id].ratio-DQ[p.x.id].ratio);
   const idleV=sum(idle.map(o=>o.v.b)),overV=sum(over.map(o=>o.v.b));
   headline($('#al-head'),out.length?'bad':'ok','ควรเร่งดู: <b>'+out.length+'</b> รายการหมดสต็อกแต่ยังมีการจ่าย · <b>'+low.length+'</b> รายการพอใช้ไม่ถึง 30 วัน · <b>'+over.length+'</b> รายการล้นสต็อก · <b>'+idle.length+'</b> รายการไม่เคลื่อนไหว');
   $('#al-h').textContent='สต็อกเสี่ยงและข้อสังเกต · '+scopeName()+' · '+rangeLabel();
@@ -443,11 +463,13 @@ function renderAlerts(){
   sm.push(['warn','พอใช้ไม่ถึง 30 วัน',low.length+' รายการ']);
   sm.push(['warn','ล้นสต็อก (พอใช้เกิน 180 วัน)',over.length+' รายการ มูลค่าคงเหลือรวม '+baht(overV)+' บาท']);
   sm.push(['info','มีของแต่ไม่เคลื่อนไหว',idle.length+' รายการ มูลค่ารวม '+baht(idleV)+' บาท ควรทบทวนวันหมดอายุและความจำเป็น']);
+  sm.push([dq.length?'warn':'ok','ราคาต่อหน่วย/หน่วยนับที่ควรตรวจ',dq.length?dq.length+' รายการ (ดูส่วนแรกด้านล่าง) ตัวเลขปริมาณและวัน/สต็อกของรายการเหล่านี้อาจคลาดเคลื่อน':'ไม่พบรายการที่ราคาต่อหน่วยหรือหน่วยนับผิดปกติตามเกณฑ์']);
   sm.push([mism.length||neg.length?'bad':'ok','ตรวจความถูกต้องของข้อมูล',mism.length?mism.length+' รายการสมการ ยกมา+รับ−จ่าย≠คงเหลือ':'สมการ ยกมา + รับ − จ่าย = คงเหลือ ลงตัวทุกรายการ'+(neg.length?' · ยอดติดลบ '+neg.length+' รายการ':' · ไม่พบยอดติดลบ')+(blankV.length?' · มีของแต่มูลค่าเป็นว่าง/0 '+blankV.length+' รายการ':'')]);
   $('#al-sum').innerHTML=sm.map(a=>'<div class="hp-in '+(a[0]==='info'?'':a[0])+'"><i></i><div><b>'+a[1]+'</b> · '+a[2]+'</div></div>').join('');
   const sec=(t,n,items,cnt)=>'<div class="hp-card"><h2>'+t+' <span class="hp-mut">('+(cnt!=null?cnt:items.length)+')</span></h2><p class="hp-note">'+n+'</p>'+(items.length?'<div class="hp-grid w2">'+items.join('')+'</div>':'<div class="hp-empty">ไม่พบรายการตามเกณฑ์ในตัวกรองนี้</div>')+'</div>';
   const lim=a=>a.slice(0,12);
   let h='';
+  h+=sec('ข้อมูลที่ควรตรวจ: ราคาต่อหน่วยและหน่วยนับ','ตรวจอัตโนมัติจาก (1) ราคาต่อหน่วยตั้งแต่ 200 บาทและสูงกว่ามัธยฐานของรายการหน่วยเดียวกันในหมวดเดียวกันตั้งแต่ 30 เท่า (2) ประเภทในรายงานเป็น Box แต่หน่วยนับเป็นชิ้น/คู่/อัน ฯลฯ · เป็นสัญญาณให้ผู้ดูแลคลังตรวจกับต้นฉบับ ไม่ใช่ข้อสรุป · ยาราคาสูงจริง (เช่น ฝังคุมกำเนิด) อาจติดเกณฑ์ได้',lim(dq).map(o=>alertCard('ตรวจข้อมูล','b-warn',o.x,esc(DQ[o.x.id].reasons.map(z=>z.txt).join(' · '))+' · คงเหลือ '+nf(o.q.b)+' '+esc(o.x.unit)+' ('+nf(o.v.b)+' บาท)')),dq.length);
   h+=sec('หมดสต็อกแต่ยังมีการจ่าย','คงเหลือสิ้นช่วงเป็น 0 แต่มีการจ่ายออกในช่วง เรียงตามมูลค่าที่จ่าย ตรวจว่ากำลังรอสั่ง/รอรับหรือควรเร่งจัดซื้อ',lim(out).map(o=>alertCard('หมดสต็อก','b-bad',o.x,'จ่ายในช่วง <b>'+nf(o.q.d)+' '+esc(o.x.unit)+'</b> ('+nf(o.v.d)+' บาท) · รับเข้า '+nf(o.q.r)+' · ยกมา '+nf(o.q.o)+' · คงเหลือ <b>0</b>')),out.length);
   h+=sec('พอใช้ไม่ถึง 30 วัน','คงเหลือหารด้วยอัตราจ่ายต่อวันของช่วงที่เลือก เรียงจากน้อยไปมาก',lim(low).map(o=>alertCard('ใกล้หมด','b-warn',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> พอใช้ประมาณ <b>'+nf(o.st.dos)+' วัน</b> (อัตราจ่ายเฉลี่ย '+nf(o.q.dk/o.q.dayk*30)+' '+esc(o.x.unit)+'/เดือน)')),low.length);
   h+=sec('ล้นสต็อก (พอใช้เกิน 180 วัน)','มีการจ่ายแต่คงเหลือมากเมื่อเทียบกับอัตราจ่าย เรียงตามมูลค่าคงเหลือ อาจเป็นยาสั่งเป็นล็อตหรือใช้ตามฤดูกาล',lim(over).map(o=>alertCard('ล้นสต็อก','b-warn',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> ('+nf(o.v.b)+' บาท) พอใช้ประมาณ <b>'+(isFinite(o.st.dos)?nf(o.st.dos)+' วัน':'—')+'</b> จ่าย '+nf(o.q.d)+' ในช่วง')),over.length);
@@ -552,6 +574,7 @@ function render(){
   if(rt){const p=colors();['a','b','c','d'].forEach((k,i)=>rt.style.setProperty('--hp-'+k,p[i]||'var(--color-fg)'));
     if(anim==='tab'){rt.classList.add('go');clearTimeout(animT);animT=setTimeout(()=>rt.classList.remove('go'),2200);}}
   animNow=anim;anim=null;
+  dqCalc();
   syncControls();renderFbar();
   renderDetail();
   if(S.tab==='overview')renderOverview();
