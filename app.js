@@ -11,6 +11,7 @@ const pct=(x,d)=>(x*100).toFixed(d==null?1:d)+'%';
 const trunc=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
 const KEYS=['oq','ov','rq','rv','dq','dv','bq','bv'];
 const S={tab:'overview',m:'v',unit:'',pc:'ALL',mode:'dis',view:'ALL',from:1,to:12,fy:null,q:'',active:true,sort:{k:'bv',d:-1},limit:80,detail:null};
+let OFF=0,ABCF='A';
 let ALLM=[],FYS=[],MON=[],AV=12,D=[],CATS=[],SYMS=[],PC=[],catBy={},symBy={},pcBy={},byId={},UNITS=[],ready=false,SIG='';
 let anim='tab',animNow=null,animT=null;
 const PREVK={};
@@ -58,7 +59,7 @@ function prep(){
 function applyFY(reset){
   const fm=ALLM.filter(x=>x.fy===S.fy).sort((a,b)=>a.fm-b.fm);
   MON=fm;AV=0;while(AV<fm.length&&fm[AV].has)AV++;if(AV<1)AV=fm.length;
-  const off=ALLM.indexOf(fm[0]);
+  const off=ALLM.indexOf(fm[0]);OFF=off;
   D.forEach(o=>{KEYS.forEach(k=>{o[k]=o.A[k].slice(off,off+fm.length);});});
   if(reset||S.to>AV||S.from>AV){S.from=1;S.to=AV;}
 }
@@ -68,17 +69,25 @@ const rangeLabel=()=>S.from===S.to?mlab(S.from-1):mlab(S.from-1)+' – '+mlab(S.
 const days=()=>{let t=0;for(let i=S.from-1;i<S.to;i++)t+=MON[i].days;return t||30;};
 
 /* ---------- aggregation ---------- */
+function rateWin(){
+  const g=OFF+S.to-1;let s=g,k=0;
+  for(let i=g;i>=Math.max(0,g-2);i--){if(!ALLM[i]||!ALLM[i].has)break;s=i;k++;}
+  return {s:s,e:g,k:Math.max(k,1)};
+}
+const rateNote=()=>{const k=rateWin().k;return 'อัตราจ่ายเฉลี่ย '+k+' เดือนล่าสุด'+(k<3?' (ยังไม่ครบ 3 เดือน ค่าอาจแกว่ง)':'');};
 function agg(rows,m){
   m=m||S.m;const a=S.from-1,b=S.to-1;let o=0,r=0,d=0,bal=0;
-  rows.forEach(x=>{const O=x['o'+m],R=x['r'+m],Dd=x['d'+m],B=x['b'+m];o+=O[a];for(let i=a;i<=b;i++){r+=R[i];d+=Dd[i];}bal+=B[b];});
-  return {o:o,r:r,d:d,b:bal};
+  const w=rateWin();let dk=0,dayk=0;
+  rows.forEach(x=>{const O=x['o'+m],R=x['r'+m],Dd=x['d'+m],B=x['b'+m],DA=x.A['d'+m];o+=O[a];for(let i=a;i<=b;i++){r+=R[i];d+=Dd[i];}bal+=B[b];for(let i=w.s;i<=w.e;i++)dk+=DA[i];});
+  for(let i=w.s;i<=w.e;i++)dayk+=ALLM[i].days;
+  return {o:o,r:r,d:d,b:bal,dk:dk,dayk:dayk||30,k:w.k};
 }
 function mser(rows,m){
   m=m||S.m;const out=[];
   for(let i=0;i<AV;i++){let o=0,r=0,d=0,b=0;rows.forEach(x=>{o+=x['o'+m][i];r+=x['r'+m][i];d+=x['d'+m][i];b+=x['b'+m][i];});out.push({o:o,r:r,d:d,b:b});}
   return out;
 }
-const dos=a=>a.d>0?a.b/(a.d/days()):(a.b>0?Infinity:null);
+const dos=a=>a.dk>0?a.b/(a.dk/a.dayk):(a.b>0?Infinity:null);
 const turn=a=>{const av=(a.o+a.b)/2;return av>0?a.d/av*365/days():null;};
 const fdos=v=>v==null?'—':!isFinite(v)?'ไม่มีการจ่าย':v>=1000?'> 999 วัน':nf(v)+' วัน';
 function filt(o){
@@ -164,7 +173,7 @@ function syncControls(){
   $('#hp-act').setAttribute('aria-pressed',String(S.active));
   const rows=scope(),a=agg(rows);
   $('#hp-ctx').innerHTML='กำลังดู: <b>'+esc(scopeName())+'</b> · <b>'+esc(rangeLabel())+'</b> · '+(S.m==='q'?'ปริมาณหน่วย <b>'+esc(S.unit)+'</b>':'มูลค่า')+' · คงเหลือ <b>'+fmtM(a.b)+' '+unitTxt()+'</b> · '+nf(rows.length)+' รายการ'+(S.m==='q'?' <span class="hp-unitnote">(ปริมาณรวมได้เฉพาะรายการที่หน่วยนับเดียวกัน)</span>':'');
-  ['overview','cats','groups','items','alerts'].forEach(t=>{$('#hp-'+t).hidden=S.tab!==t;});
+  ['overview','cats','groups','abc','items','alerts'].forEach(t=>{$('#hp-'+t).hidden=S.tab!==t;});
   heroRender(rows,a);
 }
 function heroRender(rows,a){
@@ -243,10 +252,10 @@ function renderOverview(){
   const idleV=sum(rows.filter(x=>stat(x).k==='idle').map(x=>agg([x],'v').b));
   const out=rows.filter(x=>stat(x).k==='out').length,low=rows.filter(x=>stat(x).k==='low').length;
   const diff=a.o+a.r-a.d-a.b;
-  headline($('#ov-head'),out>0?'bad':'info','<span class="hp-hl-t">'+esc(scopeName())+' · '+esc(rangeLabel())+'</span> ยกมา <b>'+fmtM(a.o)+'</b> + รับ <b>'+fmtM(a.r)+'</b> − จ่าย <b>'+fmtM(a.d)+'</b> = คงเหลือ <b>'+fmtM(a.b)+'</b> '+unitTxt()+(dd!=null?' · สต็อกพอใช้ประมาณ <b>'+fdos(dd)+'</b> ตามอัตราจ่ายของช่วงนี้':'')+(out?' · <b class="up-bad">หมดสต็อกแต่ยังมีการจ่าย '+out+' รายการ</b>':'')+(Math.abs(diff)>0.5?' · <b class="up-bad">ตรวจสมการไม่ลงตัว '+nf(diff)+'</b>':''));
+  headline($('#ov-head'),out>0?'bad':'info','<span class="hp-hl-t">'+esc(scopeName())+' · '+esc(rangeLabel())+'</span> ยกมา <b>'+fmtM(a.o)+'</b> + รับ <b>'+fmtM(a.r)+'</b> − จ่าย <b>'+fmtM(a.d)+'</b> = คงเหลือ <b>'+fmtM(a.b)+'</b> '+unitTxt()+(dd!=null?' · สต็อกพอใช้ประมาณ <b>'+fdos(dd)+'</b> ตาม'+rateNote():'')+(out?' · <b class="up-bad">หมดสต็อกแต่ยังมีการจ่าย '+out+' รายการ</b>':'')+(Math.abs(diff)>0.5?' · <b class="up-bad">ตรวจสมการไม่ลงตัว '+nf(diff)+'</b>':''));
   $('#ov-kpis').innerHTML=FLOW.map(f=>kpi(f.n+(f.k==='o'?' (ต้นช่วง)':f.k==='b'?' (ปลายช่วง)':' (รวมในช่วง)'),cnt('k'+f.k,a[f.k],m==='v'?'b':'n')+' <small>'+unitTxt()+'</small>',f.k==='o'?'ยอดยกมาเดือน '+esc(mlab(S.from-1)):f.k==='b'?'ยอดสิ้นเดือน '+esc(mlab(S.to-1)):nf(rows.filter(x=>{const q=agg([x],m);return q[f.k]>0;}).length)+' รายการที่มี'+f.n)).join('');
   $('#ov-kpis2').innerHTML=
-    kpi('วันที่สต็อกพอใช้',dd==null?'—':!isFinite(dd)?'—':cnt('dos',Math.round(dd),'n')+' <small>วัน</small>','คงเหลือ ÷ อัตราจ่ายต่อวันของช่วงที่เลือก ('+days()+' วัน)')+
+    kpi('วันที่สต็อกพอใช้',dd==null?'—':!isFinite(dd)?'—':cnt('dos',Math.round(dd),'n')+' <small>วัน</small>','คงเหลือ ÷ อัตราจ่ายต่อวัน · '+rateNote())+
     kpi('อัตราหมุนเวียน',tn==null?'—':nf1(tn)+' <small>ครั้ง/ปี</small>','จ่าย ÷ สต็อกเฉลี่ย ปรับเป็นต่อปี')+
     kpi('หมดสต็อก / ใกล้หมด',nf(out)+' <small>/ '+nf(low)+' รายการ</small>','หมดสต็อกแต่ยังจ่าย / พอใช้ไม่ถึง 30 วัน')+
     kpi('ไม่เคลื่อนไหวแต่มีของ',baht(idleV)+' <small>บาท</small>','มูลค่าคงเหลือของรายการที่ไม่มีการจ่ายในช่วง');
@@ -328,17 +337,63 @@ function itemRows(){
   list.sort((a,b)=>{const A=gv(a),B=gv(b);return (A<B?-1:A>B?1:0)*dr;});
   return list;
 }
+function abcCalc(rows){
+  const L=rows.map(x=>{const v=agg([x],'v'),q=agg([x],'q'),st=stat(x);return {x:x,dv:v.d,bv:v.b,v:v,q:q,st:st};});
+  const act=L.filter(o=>o.dv>0).sort((p,q)=>q.dv-p.dv);const tot=sum(act.map(o=>o.dv));let cum=0;const map={};
+  act.forEach((o,i)=>{const before=tot?cum/tot:0;cum+=o.dv;o.rank=i+1;o.cum=tot?cum/tot:0;o.cls=before<0.8?'A':before<0.95?'B':'C';map[o.x.id]=o;});
+  const none=L.filter(o=>!(o.dv>0));none.forEach(o=>{o.cls='N';o.rank=null;o.cum=null;map[o.x.id]=o;});
+  return {act:act,none:none,tot:tot,map:map,all:act.concat(none)};
+}
+const ABCC={A:()=>col(1),B:()=>col(3),C:()=>col(7),N:()=>'var(--cds-chart-muted)'};
+const ABCN={A:'A · มูลค่าจ่ายสูง (สะสม 80%)',B:'B · ปานกลาง (80–95%)',C:'C · ต่ำ (95–100%)',N:'ไม่มีการจ่ายในช่วง'};
+function renderAbc(){
+  const rows=filt({pc:1,view:1}),R=abcCalc(rows);
+  const by={A:[],B:[],C:[],N:R.none};R.act.forEach(o=>by[o.cls].push(o));
+  const totB=sum(R.all.map(o=>o.bv)),totN=rows.length;
+  const risk=by.A.filter(o=>o.st.k==='out'||o.st.k==='low');
+  const overCN=sum(by.C.concat(by.N).filter(o=>o.st.k==='over'||o.st.k==='idle').map(o=>o.bv));
+  headline($('#ab-head'),risk.length?'bad':'info','<span class="hp-hl-t">ABC ตามมูลค่าจ่าย · '+esc(scopeName())+' · '+esc(rangeLabel())+'</span> กลุ่ม A มี <b>'+by.A.length+'</b> รายการ ('+(totN?pct(by.A.length/totN,0):'—')+' ของรายการทั้งหมด) แต่คิดเป็น 80% ของมูลค่าจ่าย'+(risk.length?' · <b class="up-bad">กลุ่ม A ที่หมด/ใกล้หมด '+risk.length+' รายการ</b>':' · กลุ่ม A ไม่มีรายการหมด/ใกล้หมด')+' · มูลค่าคงเหลือที่ล้นสต็อก/ไม่เคลื่อนไหวในกลุ่ม C และไม่มีการจ่าย <b>'+baht(overCN)+' บาท</b>');
+  $('#ab-cards').innerHTML=['A','B','C','N'].map((k,i)=>{const L=by[k],dv=sum(L.map(o=>o.dv)),bv=sum(L.map(o=>o.bv)),a={b:bv,dk:sum(L.map(o=>o.v.dk)),dayk:L.length?L[0].v.dayk:30};
+    return '<button class="hp-gc" style="--i:'+i+';border-top:3px solid '+ABCC[k]()+'" data-act="abcf" data-k="'+k+'" data-tip="'+esc(ABCN[k]+'\nกดเพื่อดูรายการ')+'"><span class="t">'+esc(ABCN[k])+'</span><span class="v">'+nf(L.length)+' <small class="hp-mut">รายการ ('+(totN?pct(L.length/totN,0):'—')+')</small></span><span class="fl"><span>มูลค่าจ่าย</span><span>'+baht(dv)+' บาท'+(R.tot?' ('+pct(dv/R.tot,0)+')':'')+'</span><span>มูลค่าคงเหลือ</span><span>'+baht(bv)+' บาท'+(totB?' ('+pct(bv/totB,0)+')':'')+'</span><span>วันที่พอใช้ (มูลค่า)</span><span>'+(k==='N'?'—':fdos(dos(a)))+'</span></span></button>';}).join('');
+  $('#ab-pn').textContent='จัดชั้นตามมูลค่าที่จ่ายในช่วง '+rangeLabel()+' (ไม่ขึ้นกับตัวเลือกมูลค่า/ปริมาณ) · เรียงจากมูลค่าจ่ายมากไปน้อย แกนตั้ง = สัดส่วนสะสมของมูลค่าจ่าย · เส้นประ = 80% และ 95% · ควรเลือกช่วง 3–12 เดือนเพื่อให้การจัดชั้นนิ่ง (ตอนนี้ช่วงสั้นอาจจัดชั้นต่างไปเมื่อมีข้อมูลมากขึ้น)';
+  paretoChart($('#ab-par'),R.act);
+  $('#ab-lg').innerHTML=['A','B','C'].map(k=>'<span style="--c:'+ABCC[k]()+'">'+k+'</span>').join('');
+  $('#ab-seg').innerHTML=['A','B','C','N'].map(k=>'<button data-act="abcf" data-k="'+k+'" aria-pressed="'+(ABCF===k)+'">'+(k==='N'?'ไม่จ่าย':k)+' ('+by[k].length+')</button>').join('');
+  const L=by[ABCF].slice().sort((p,q)=>ABCF==='N'?q.bv-p.bv:p.rank-q.rank);
+  $('#ab-th').textContent='รายการชั้น '+(ABCF==='N'?'ไม่มีการจ่าย':ABCF)+' ('+nf(L.length)+')';
+  $('#ab-tn').textContent=(ABCF==='A'?'รายการที่ควรดูแลใกล้ชิดที่สุด: ตรวจจุดสั่งซื้อและไม่ให้ขาด':ABCF==='C'?'รายการมูลค่าจ่ายต่ำ ลดความถี่ตรวจนับ/สั่งซื้อได้ แต่ระวังล้นสต็อก':ABCF==='N'?'มีรายการในรายงานแต่ไม่จ่ายเลย เรียงตามมูลค่าคงเหลือ':'')+' · กดแถวเพื่อดูรายเดือน · แสดงสูงสุด 100 รายการ';
+  let h='<table><thead><tr><th>ชื่อ / ความแรง</th><th>หมวด</th><th>อันดับ</th><th>หน่วย</th><th>จ่าย</th><th>% สะสม</th><th>คงเหลือ</th><th>วันที่พอใช้</th><th>สถานะ</th></tr></thead><tbody>';
+  L.slice(0,100).forEach(o=>{const x=o.x;h+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+'<small>'+esc(x.code)+'</small></td><td>'+esc(pcBy[x.pcat]?pcBy[x.pcat].short:'')+'</td><td>'+(o.rank?nf(o.rank):'—')+'</td><td class="u">'+esc(x.unit)+'</td><td>'+nf(o.q.d)+'<small>'+nf(o.dv)+' บาท</small></td><td>'+(o.cum==null?'—':pct(o.cum,1))+'</td><td>'+nf(o.q.b)+'<small>'+nf(o.bv)+' บาท</small></td><td>'+fdos(o.st.dos)+'</td><td><span class="hp-badge '+o.st.c+'">'+o.st.t+'</span></td></tr>';});
+  $('#ab-tbl').innerHTML=L.length?h+'</tbody></table>':'<div class="hp-empty">ไม่มีรายการ</div>';
+}
+function paretoChart(host,act){
+  const n=act.length;if(n<2){host.innerHTML='<div class="hp-empty">มีรายการที่จ่ายน้อยเกินกว่าจะแสดงกราฟ</div>';return;}
+  const W=Math.max(300,host.clientWidth||600),H=260,lm=44;
+  const x=d3.scaleLinear([1,n],[lm,W-12]),y=d3.scaleLinear([0,1],[H-28,12]);
+  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="กราฟพาเรโตมูลค่าจ่าย">';
+  [0,.25,.5,.75,1].forEach(t=>{s+='<line x1="'+lm+'" x2="'+(W-12)+'" y1="'+y(t)+'" y2="'+y(t)+'" style="stroke:var(--cds-chart-grid)"/><text class="hp-ax" x="'+(lm-6)+'" y="'+(y(t)+4)+'" text-anchor="end">'+Math.round(t*100)+'%</text>';});
+  [.8,.95].forEach(t=>{s+='<line x1="'+lm+'" x2="'+(W-12)+'" y1="'+y(t)+'" y2="'+y(t)+'" style="stroke:var(--cds-chart-reference)" stroke-dasharray="5 4"/>';});
+  const bw=Math.max(1.5,Math.min(14,(W-lm-12)/n*.7));
+  act.forEach((o,i)=>{const bh=Math.max(1,(H-28-12)*(o.dv/act[0].dv)*.35);s+='<rect x="'+(x(o.rank)-bw/2).toFixed(1)+'" y="'+(H-28-bh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" style="fill:'+ABCC[o.cls]()+';opacity:.5"/>';});
+  ['A','B','C'].forEach(k=>{const seg=act.filter(o=>o.cls===k);if(!seg.length)return;const pts=seg.map(o=>[x(o.rank),y(o.cum)]);const f=seg[0].rank>1?[[x(seg[0].rank-1),y(act[seg[0].rank-2].cum)]]:[[x(1),y(0)]];
+    s+='<path class="hp-line" pathLength="1" d="'+d3.line()(f.concat(pts))+'" fill="none" style="stroke:'+ABCC[k]()+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';});
+  const step=(W-lm-12)/Math.max(1,n-1);
+  act.forEach(o=>{s+='<rect x="'+(x(o.rank)-step/2).toFixed(1)+'" y="0" width="'+step.toFixed(1)+'" height="'+(H-24)+'" fill="transparent" data-tip="'+esc('อันดับ '+o.rank+' · '+o.x.label+'\nชั้น '+o.cls+' · มูลค่าจ่าย '+nf(o.dv)+' บาท\nสะสม '+pct(o.cum,1))+'"/>';});
+  s+='<text class="hp-ax" x="'+((lm+W-12)/2)+'" y="'+(H-6)+'" text-anchor="middle">อันดับรายการ (1 = จ่ายเป็นมูลค่าสูงสุด) · แท่ง = มูลค่าจ่ายของรายการ (สเกลสัมพัทธ์)</text></svg>';
+  host.innerHTML=s;
+}
 function renderItems(){
   const list=itemRows();
+  const abcm=abcCalc(filt({pc:1,view:1})).map;
   const cs={out:0,low:0,over:0,idle:0};list.forEach(o=>{if(cs[o.st.k]!=null)cs[o.st.k]++;});
   headline($('#dr-head'),cs.out?'bad':'info','<span class="hp-hl-t">'+esc(scopeName())+'</span> พบ '+nf(list.length)+' รายการ · หมดสต็อก <b class="up-bad">'+cs.out+'</b> · ใกล้หมด <b class="up-bad">'+cs.low+'</b> · ล้นสต็อก <b>'+cs.over+'</b> · ไม่เคลื่อนไหว <b>'+cs.idle+'</b> · กดหัวคอลัมน์เพื่อเรียง');
   $('#dr-h').textContent='รายการทั้งหมด · '+scopeName();
   $('#dr-n').textContent=rangeLabel()+' · แต่ละช่องบนคือปริมาณ (หน่วยของรายการ) ล่างคือมูลค่า (บาท) · กดแถวเพื่อดูรายเดือน';
   const th=(k,t)=>'<th><button data-act="sort" data-k="'+k+'">'+t+(S.sort.k===k?(S.sort.d<0?' ▼':' ▲'):'')+'</button></th>';
-  let h='<table><thead><tr>'+th('label','ชื่อ / ความแรง')+th('pcat','หมวด')+th('cat','กลุ่ม')+th('unit','หน่วย')+th('oq','ยกมา')+th('rq','รับ')+th('dq','จ่าย')+th('bq','คงเหลือ')+th('dos','วันที่พอใช้')+th('st','สถานะ')+'</tr></thead><tbody>';
+  let h='<table><thead><tr>'+th('label','ชื่อ / ความแรง')+th('pcat','หมวด')+th('cat','กลุ่ม')+th('unit','หน่วย')+'<th>ABC</th>'+th('oq','ยกมา')+th('rq','รับ')+th('dq','จ่าย')+th('bq','คงเหลือ')+th('dos','วันที่พอใช้')+th('st','สถานะ')+'</tr></thead><tbody>';
   list.slice(0,S.limit).forEach(o=>{
     const x=o.x,pcn=pcBy[x.pcat];
-    h+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+'<small>'+esc(x.code)+'</small></td><td>'+esc(pcn?pcn.short:'')+'</td><td>'+esc(gshort(x))+'</td><td class="u">'+esc(x.unit)+'</td>'+
+    h+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+'<small>'+esc(x.code)+'</small></td><td>'+esc(pcn?pcn.short:'')+'</td><td>'+esc(gshort(x))+'</td><td class="u">'+esc(x.unit)+'</td><td>'+(abcm[x.id]?'<span class="hp-badge" style="color:'+ABCC[abcm[x.id].cls]()+'">'+(abcm[x.id].cls==='N'?'-':abcm[x.id].cls)+'</span>':'')+'</td>'+
       ['o','r','d','b'].map(f=>'<td>'+nf(o[f+'q'])+'<small>'+nf(o[f+'v'])+'</small></td>').join('')+'<td>'+fdos(o.st.dos)+'</td><td><span class="hp-badge '+o.st.c+'">'+o.st.t+'</span></td></tr>';
   });
   h+='</tbody></table>';
@@ -382,7 +437,7 @@ function renderAlerts(){
   const idleV=sum(idle.map(o=>o.v.b)),overV=sum(over.map(o=>o.v.b));
   headline($('#al-head'),out.length?'bad':'ok','ควรเร่งดู: <b>'+out.length+'</b> รายการหมดสต็อกแต่ยังมีการจ่าย · <b>'+low.length+'</b> รายการพอใช้ไม่ถึง 30 วัน · <b>'+over.length+'</b> รายการล้นสต็อก · <b>'+idle.length+'</b> รายการไม่เคลื่อนไหว');
   $('#al-h').textContent='สต็อกเสี่ยงและข้อสังเกต · '+scopeName()+' · '+rangeLabel();
-  $('#al-n').textContent='ตัวชี้วัดคำนวณจากอัตราจ่ายของช่วงที่เลือก'+(AV<3?' (ตอนนี้มีข้อมูลน้อยกว่า 3 เดือน อัตราจ่ายอาจแกว่ง เช่น ยาที่จ่ายเป็นรอบหรือสั่งเป็นล็อต ควรใช้เป็นสัญญาณให้ตรวจ ไม่ใช่ข้อสรุป)':' ผลที่ได้เป็นสัญญาณให้ตรวจสอบต่อ ไม่ใช่ข้อสรุป')+' · เกณฑ์: ใกล้หมด < 30 วัน, ล้นสต็อก > 180 วัน, ไม่เคลื่อนไหว = มีของแต่ไม่จ่ายเลยในช่วง';
+  $('#al-n').textContent='ตัวชี้วัดคำนวณจาก'+' ('+rateNote()+(rateWin().k<3?' ยาที่จ่ายเป็นรอบหรือสั่งเป็นล็อตอาจถูกจัดผิด':'')+') ผลที่ได้เป็นสัญญาณให้ตรวจสอบต่อ ไม่ใช่ข้อสรุป'+' · เกณฑ์: ใกล้หมด < 30 วัน, ล้นสต็อก > 180 วัน, ไม่เคลื่อนไหว = มีของแต่ไม่จ่ายเลยในช่วง';
   const sm=[];
   sm.push(['bad','หมดสต็อกแต่ยังมีการจ่าย',out.length+' รายการ (เป็นยอดสิ้นเดือน '+mlab(S.to-1)+' ควรเทียบกับการสั่งซื้อที่กำลังเข้า)']);
   sm.push(['warn','พอใช้ไม่ถึง 30 วัน',low.length+' รายการ']);
@@ -394,7 +449,7 @@ function renderAlerts(){
   const lim=a=>a.slice(0,12);
   let h='';
   h+=sec('หมดสต็อกแต่ยังมีการจ่าย','คงเหลือสิ้นช่วงเป็น 0 แต่มีการจ่ายออกในช่วง เรียงตามมูลค่าที่จ่าย ตรวจว่ากำลังรอสั่ง/รอรับหรือควรเร่งจัดซื้อ',lim(out).map(o=>alertCard('หมดสต็อก','b-bad',o.x,'จ่ายในช่วง <b>'+nf(o.q.d)+' '+esc(o.x.unit)+'</b> ('+nf(o.v.d)+' บาท) · รับเข้า '+nf(o.q.r)+' · ยกมา '+nf(o.q.o)+' · คงเหลือ <b>0</b>')),out.length);
-  h+=sec('พอใช้ไม่ถึง 30 วัน','คงเหลือหารด้วยอัตราจ่ายต่อวันของช่วงที่เลือก เรียงจากน้อยไปมาก',lim(low).map(o=>alertCard('ใกล้หมด','b-warn',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> พอใช้ประมาณ <b>'+nf(o.st.dos)+' วัน</b> (จ่าย '+nf(o.q.d)+' ใน '+days()+' วัน)')),low.length);
+  h+=sec('พอใช้ไม่ถึง 30 วัน','คงเหลือหารด้วยอัตราจ่ายต่อวันของช่วงที่เลือก เรียงจากน้อยไปมาก',lim(low).map(o=>alertCard('ใกล้หมด','b-warn',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> พอใช้ประมาณ <b>'+nf(o.st.dos)+' วัน</b> (อัตราจ่ายเฉลี่ย '+nf(o.q.dk/o.q.dayk*30)+' '+esc(o.x.unit)+'/เดือน)')),low.length);
   h+=sec('ล้นสต็อก (พอใช้เกิน 180 วัน)','มีการจ่ายแต่คงเหลือมากเมื่อเทียบกับอัตราจ่าย เรียงตามมูลค่าคงเหลือ อาจเป็นยาสั่งเป็นล็อตหรือใช้ตามฤดูกาล',lim(over).map(o=>alertCard('ล้นสต็อก','b-warn',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> ('+nf(o.v.b)+' บาท) พอใช้ประมาณ <b>'+(isFinite(o.st.dos)?nf(o.st.dos)+' วัน':'—')+'</b> จ่าย '+nf(o.q.d)+' ในช่วง')),over.length);
   h+=sec('มีของแต่ไม่เคลื่อนไหว','ไม่มีการจ่ายในช่วงที่เลือก เรียงตามมูลค่าคงเหลือ ใช้ประกอบการทบทวนวันหมดอายุ ความจำเป็นของรายการ และการแลกเปลี่ยนยากับหน่วยงานอื่น',lim(idle).map(o=>alertCard('ไม่เคลื่อนไหว','b-mut',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> มูลค่า <b>'+nf(o.v.b)+' บาท</b> · รับเข้า '+nf(o.q.r))),idle.length);
   h+=sec('ยาสนับสนุน: รับและจ่าย','ยาที่ได้รับสนับสนุนจากโครงการ (เช่น HIV วัณโรค) ตรวจว่ารับและจ่ายสอดคล้องกัน มูลค่าคงเหลือของยากลุ่มนี้อาจไม่ถูกบันทึกในคลัง',lim(sup).map(o=>alertCard('สนับสนุน','b-mut',o.x,'รับ <b>'+nf(o.q.r)+'</b> จ่าย <b>'+nf(o.q.d)+'</b> คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> · มูลค่ารับ/จ่าย '+nf(o.v.r)+' / '+nf(o.v.d)+' บาท')),sup.length);
@@ -457,6 +512,7 @@ document.addEventListener('click',e=>{
   else if(a==='close'){S.detail=null;}
   else if(a==='sort'){const k=el.dataset.k;S.sort=S.sort.k===k?{k:k,d:-S.sort.d}:{k:k,d:(k==='label'||k==='pcat'||k==='cat'||k==='unit'||k==='st')?1:-1};}
   else if(a==='more'){S.limit+=120;}
+  else if(a==='abcf'){ABCF=el.dataset.k;S.tab='abc';}
   else if(a==='togactive'){S.active=!S.active;}
   anim=(a==='tab'||a==='fy')?'tab':'data';go();
 });
@@ -501,6 +557,7 @@ function render(){
   if(S.tab==='overview')renderOverview();
   else if(S.tab==='cats')renderCats();
   else if(S.tab==='groups')renderGroups();
+  else if(S.tab==='abc')renderAbc();
   else if(S.tab==='items')renderItems();
   else if(S.tab==='alerts')renderAlerts();
   countUps();tabInd();
