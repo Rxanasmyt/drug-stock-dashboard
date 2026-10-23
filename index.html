@@ -499,6 +499,14 @@
 
 .hp-filters #hp-excl{border-color:var(--color-border-line);color:var(--color-fg)}
 .hp-filters #hp-excl[aria-pressed=true]{background:color-mix(in srgb,var(--color-warn) 18%,transparent);border-color:var(--color-warn)}
+
+.hp-gh{margin:0 0 8px;font-size:.95rem;font-weight:700}
+.hp-glance{margin-bottom:var(--cds-gap-sm)}
+.hp-glance .hp-gc{text-align:left}
+.hp-odctl{gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}.hp-grow{flex:1}
+#od-tbl th,#od-tbl td{text-align:right}#od-tbl th:nth-child(-n+3),#od-tbl td:nth-child(-n+3){text-align:left}
+.hp-foot summary{cursor:pointer;font-weight:700;color:var(--color-fg)}
+@media print{#hp-order .hp-odctl{display:none!important}.hp-foot details{display:block}}
 </style>
 <div id="hp" class="hp">
   <header class="hp-hero">
@@ -512,13 +520,14 @@
 
   <nav class="hp-tabs" id="hp-tabs" role="tablist" aria-label="หัวข้อ">
     <button role="tab" data-act="tab" data-t="overview">ภาพรวม</button>
+    <button role="tab" data-act="tab" data-t="order">ต้องสั่งซื้อ</button>
     <button role="tab" data-act="tab" data-t="cats">แยกตามหมวด</button>
     <button role="tab" data-act="tab" data-t="groups">เทียบกลุ่มโรค</button>
     <button role="tab" data-act="tab" data-t="abc">วิเคราะห์ ABC</button>
     <button role="tab" data-act="tab" data-t="items">รายการทั้งหมด</button>
     <button role="tab" data-act="tab" data-t="alerts">สต็อกเสี่ยงและข้อสังเกต</button>
   </nav>
-  <div class="hp-keybar"><span class="hp-key"><span class="up-bad">แดง = ควรระวัง (หมดสต็อก/ใกล้หมด)</span><span class="dn-ok">เขียว = ปกติ</span><span class="flat">เทา = ไม่เคลื่อนไหว</span></span><span class="hp-keyb"><button class="hp-btn" data-act="replay">▶ เล่นแอนิเมชันซ้ำ</button><button class="hp-btn" data-act="copy">คัดลอกสรุป</button><button class="hp-btn" data-act="print">พิมพ์ / PDF</button></span></div>
+  <div class="hp-keybar"><span class="hp-key"><span class="up-bad">แดง = ควรระวัง (หมดสต็อก/ใกล้หมด)</span><span class="dn-ok">เขียว = ปกติ</span><span class="flat">เทา = ไม่เคลื่อนไหว</span></span><span class="hp-keyb"><button class="hp-btn" data-act="method">ที่มาและวิธีคำนวณ</button><button class="hp-btn" data-act="replay">▶ เล่นแอนิเมชันซ้ำ</button><button class="hp-btn" data-act="copy">คัดลอกสรุป</button><button class="hp-btn" data-act="print">พิมพ์ / PDF</button></span></div>
   <div class="hp-fbar" id="hp-fbar" hidden></div>
   <button class="hp-btn hp-ftog" id="hp-ftog" aria-expanded="false" aria-controls="hp-filters"><span>ตัวกรอง ▾</span></button>
   <div class="hp-filters" id="hp-filters">
@@ -554,6 +563,7 @@
 
   <section class="hp-sec" id="hp-overview" hidden>
     <div id="ov-head"></div>
+    <div id="ov-glance" class="hp-glance"></div>
     <div class="hp-kpis" id="ov-kpis"></div>
     <div class="hp-kpis" id="ov-kpis2"></div>
     <div class="hp-grid w2">
@@ -565,6 +575,12 @@
       <div class="hp-card"><h2 id="ov-grp-h">คงเหลือตามกลุ่มโรค</h2><p class="hp-note" id="ov-grp-n"></p><div id="ov-grp"></div></div>
       <div class="hp-card"><h2 id="ov-top-h">รายการคงเหลือสูงสุด</h2><p class="hp-note">กดที่แถวเพื่อดูรายละเอียดรายเดือนของรายการนั้น</p><div id="ov-top"></div></div>
     </div>
+  </section>
+
+  <section class="hp-sec" id="hp-order" hidden>
+    <div id="od-head"></div>
+    <div class="hp-card"><h2>รายการที่ควรสั่งซื้อ</h2><p class="hp-note" id="od-n"></p><div class="hp-inl hp-odctl" id="od-ctl"></div><div class="hp-tw st" id="od-tbl"></div></div>
+    <div class="hp-card"><h2>ชะลอการสั่ง: ล้นสต็อกและไม่เคลื่อนไหว (มูลค่าคงเหลือสูงสุด)</h2><p class="hp-note">รายการเหล่านี้มีของเกินความต้องการหรือไม่มีการจ่ายในช่วง ควรชะลอการสั่งและตรวจวันหมดอายุ · กดเพื่อดูรายเดือน</p><div id="od-over"></div></div>
   </section>
 
   <section class="hp-sec" id="hp-cats" hidden>
@@ -611,7 +627,7 @@
     <div id="al-body" class="hp-sec"></div>
   </section>
 
-  <footer class="hp-foot" id="hp-foot">
+  <footer class="hp-foot" id="hp-foot"><details id="hp-methods"><summary>ที่มา วิธีคำนวณ และข้อควรระวัง (กดเพื่อดู)</summary><p><b>แหล่งข้อมูล</b> รายงานสรุปยอดคงเหลือเวชภัณฑ์ (ยกมา/รับ/จ่าย/คงเหลือ) รายเดือนจากระบบคลังโรงพยาบาลกรงปินัง · <b>ข้อมูลล่าสุด:</b> <span id="hp-asof"></span> · dashboard แสดงตามรายงานโดยไม่แก้ตัวเลข ยกเว้นสวิตช์ "ไม่นับรายการราคาน่าสงสัย" ที่ตัดรายการออกตามที่เลือก</p><p><b>ข้อเสนอการสั่งซื้อ</b> ปริมาณแนะนำ = (อัตราจ่ายเฉลี่ยต่อวัน × จำนวนวันเป้าหมาย) − คงเหลือ · อัตราจ่ายใช้ค่าเฉลี่ยสูงสุด 3 เดือนล่าสุดที่มีข้อมูล · ระดับ: เร่งด่วน = คงเหลือ 0 แต่ยังมีการจ่าย, ใกล้หมด = พอใช้ไม่ถึง 30 วัน, วางแผน = พอใช้ไม่ถึงจำนวนวันเป้าหมาย · เป็นข้อเสนอให้เภสัชกรพิจารณา ไม่ใช่คำสั่งซื้ออัตโนมัติ</p><p><b>ป้ายตรวจข้อมูล</b> ติดเมื่อราคาต่อหน่วย (มูลค่า ÷ ปริมาณ) ตั้งแต่ 200 บาท และสูงกว่ามัธยฐานของรายการหน่วยเดียวกันในหมวดเดียวกันตั้งแต่ 30 เท่า (ยกเว้นรายการที่ผู้ดูแลยืนยันแล้วว่าราคาจริง) · ใช้เป็นสัญญาณให้ตรวจกับต้นฉบับ</p></details>
     <p><b>นิยาม</b> ยอดยกมา = คงเหลือต้นช่วง · รับ = รับเข้าคลังในช่วง · จ่าย = จ่ายออกในช่วง · คงเหลือ = ยอดปลายช่วง (ยกมา + รับ − จ่าย) มูลค่าเป็นบาท ปริมาณเป็นหน่วยนับของแต่ละรายการ (เม็ด ขวด แอมพูล ฯลฯ) จึงรวมข้ามหน่วยไม่ได้ ระบบแสดงปริมาณทีละหน่วยนับ</p>
     <p><b>การรวมช่วงเวลา</b> เมื่อเลือกหลายเดือน: ยกมา = ยกมาของเดือนแรก · รับ/จ่าย = ผลรวมทุกเดือน · คงเหลือ = คงเหลือสิ้นเดือนสุดท้าย (ไม่ใช่ผลรวม) · วันที่สต็อกพอใช้ = คงเหลือสิ้นช่วง ÷ อัตราจ่ายต่อวันเฉลี่ย 3 เดือนล่าสุดที่มีข้อมูล (มีเดือนเดียวใช้ 1 เดือน) · อัตราหมุนเวียน = จ่าย ÷ สต็อกเฉลี่ย (ยกมา+คงเหลือ)/2 ปรับเป็นต่อปี ค่าเหล่านี้เป็นตัวชี้วัดเบื้องต้น ยิ่งมีหลายเดือนยิ่งน่าเชื่อถือ</p>
     <p><b>สถานะรายการ</b> หมดสต็อก = คงเหลือ 0 แต่มีการจ่าย · ใกล้หมด = พอใช้ไม่ถึง 30 วัน · ล้นสต็อก = พอใช้เกิน 180 วัน · ไม่เคลื่อนไหว = มีของแต่ไม่มีการจ่ายในช่วง</p>

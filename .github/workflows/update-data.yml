@@ -1,0 +1,22 @@
+name: อัปเดตข้อมูลจากรายงานคลัง
+on:
+  push:
+    paths: ['data/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install xlrd
+      - run: python3 update.py
+      - name: commit data.js
+        run: |
+          git config user.name "dashboard-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data.js sw.js
+          git diff --cached --quiet || (git commit -m "อัปเดตข้อมูลอัตโนมัติ" && git push)

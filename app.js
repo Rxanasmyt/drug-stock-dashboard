@@ -10,7 +10,7 @@ const bahtS=x=>{x=+x||0;return Math.abs(x)>=1e6?d3.format('.2f')(x/1e6)+'M':Math
 const pct=(x,d)=>(x*100).toFixed(d==null?1:d)+'%';
 const trunc=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
 const KEYS=['oq','ov','rq','rv','dq','dv','bq','bv'];
-const S={excl:false,grAll:false,tab:'overview',m:'v',unit:'',pc:'ALL',mode:'dis',view:'ALL',from:1,to:12,fy:null,q:'',active:true,sort:{k:'bv',d:-1},limit:80,detail:null};
+const S={tgt:60,ordAll:false,excl:false,grAll:false,tab:'overview',m:'v',unit:'',pc:'ALL',mode:'dis',view:'ALL',from:1,to:12,fy:null,q:'',active:true,sort:{k:'bv',d:-1},limit:80,detail:null};
 let OFF=0,ABCF='A';
 let ALLM=[],FYS=[],MON=[],AV=12,D=[],CATS=[],SYMS=[],PC=[],catBy={},symBy={},pcBy={},byId={},UNITS=[],ready=false,SIG='';
 let anim='tab',animNow=null,animT=null;
@@ -126,10 +126,11 @@ function countUps(){
 }
 function headline(host,tone,html){host.className='hp-headline '+tone;host.innerHTML='<i></i><div>'+html+'</div>';}
 function kpi(l,n,s,sp){return '<div class="hp-kpi">'+(sp?'<span class="sp">'+sp+'</span>':'')+'<span class="l">'+l+'</span><span class="n">'+n+'</span><span class="s">'+s+'</span></div>';}
-function hbars(host,list,max){
+function hbarsHtml(list,max){
   max=max||d3.max(list,d=>d.val)||1;
-  host.innerHTML=list.length?list.map((d,i)=>'<button class="hp-hb" '+d.attr+' data-tip="'+esc(d.tip||'')+'"><span class="hp-hb-l">'+(d.warn?'<b class="hp-wm" title="ราคาต่อหน่วยน่าสงสัย">!</b> ':'')+esc(d.label)+'</span><span class="hp-hb-t"><i style="--i:'+i+';width:'+Math.max(1,d.val/max*100).toFixed(1)+'%;background:linear-gradient(90deg,'+(d.color||col(0))+',color-mix(in srgb,'+(d.color||col(0))+' 65%,transparent))"></i></span><span class="hp-hb-v">'+esc(d.vtxt)+'</span></button>').join(''):'<div class="hp-empty">ไม่มีข้อมูลในตัวกรองที่เลือก</div>';
+  return list.length?list.map((d,i)=>'<button class="hp-hb" '+d.attr+' data-tip="'+esc(d.tip||'')+'"><span class="hp-hb-l">'+(d.warn?'<b class="hp-wm" title="ราคาต่อหน่วยน่าสงสัย">!</b> ':'')+esc(d.label)+'</span><span class="hp-hb-t"><i style="--i:'+i+';width:'+Math.max(1,d.val/max*100).toFixed(1)+'%;background:linear-gradient(90deg,'+(d.color||col(0))+',color-mix(in srgb,'+(d.color||col(0))+' 65%,transparent))"></i></span><span class="hp-hb-v">'+esc(d.vtxt)+'</span></button>').join(''):'<div class="hp-empty">ไม่มีข้อมูลในตัวกรองที่เลือก</div>';
 }
+function hbars(host,list,max){host.innerHTML=hbarsHtml(list,max);}
 function lgd(items){return '<div class="hp-lg">'+items.map(i=>'<span'+(i[2]?' class="ln"':'')+' style="--c:'+i[1]+'">'+i[0]+'</span>').join('')+'</div>';}
 function pairBars(list){
   const mx=d3.max(list,d=>Math.max(d.b,d.d))||1;
@@ -187,6 +188,39 @@ function heatmap(host){
   data.forEach((o,r)=>{h+='<span class="hp-hml">'+esc(o.p.short)+'</span>'+o.arr.map((v,i)=>i<AV?'<span class="hp-hmc" style="--a:'+(v>0?(.12+.88*Math.sqrt(v/mx)).toFixed(2):0)+';--i:'+(r*n+i)+'" data-tip="'+esc(o.p.name+' · '+MON[i].full+' '+MON[i].year+'\nจ่าย '+baht(v)+' บาท')+'">'+(v>0?bahtS(v):'–')+'</span>':'<span class="hp-hmc off">·</span>').join('');});
   host.innerHTML=h+'</div>';
 }
+function aggPrev(rows,m){const len=S.to-S.from+1,f=S.from-len;if(f<1)return null;const sf=S.from,st=S.to;S.from=f;S.to=f+len-1;let r;try{r=agg(rows,m);}finally{S.from=sf;S.to=st;}return r;}
+const dlt=(c,p)=>(p==null||!p)?'':' · '+(c>=p?'▲ +':'▼ −')+pct(Math.abs(c-p)/p,0)+' เทียบช่วงก่อนหน้า';
+const pcode=x=>{const p=pcBy[x.pcat];return p?p.short:'';};
+function orderCalc(){
+  const rows=filt({pc:1,view:1});
+  const L=rows.map(x=>{const aq=agg([x],'q'),av=agg([x],'v'),st=stat(x);const rate=aq.dk/aq.dayk;const need=rate>0?Math.max(0,Math.ceil(S.tgt*rate-aq.b)):0;const pk=+x.mpack>1?+x.mpack:0;const pr=x._p||null;
+    return {x:x,st:st,q:aq,v:av,rate:rate,need:need,pk:pk,boxes:pk?Math.ceil(need/pk):null,val:(pr&&!DQ[x.id])?need*pr:null,bad:!!DQ[x.id],tier:st.k==='out'?1:st.k==='low'?2:(aq.d>0&&isFinite(st.dos)&&st.dos<S.tgt&&need>0)?3:0};}).filter(o=>o.tier&&(o.need>0||o.tier===1));
+  L.sort((p,q)=>p.tier-q.tier||(p.tier===1?q.v.d-p.v.d:p.st.dos-q.st.dos));
+  return L;
+}
+function orderTable(L){return L.map(o=>[pcode(o.x),o.x.label,o.x.code,o.x.unit,o.st.t,o.q.b,Math.round(o.rate*30*10)/10,isFinite(o.st.dos)?Math.round(o.st.dos):'',o.need,o.boxes==null?'':o.boxes,o.val==null?'':Math.round(o.val),o.bad?'ราคาน่าสงสัย ตรวจก่อนสั่ง':'']);}
+const ORD_H=['หมวด','รายการ','รหัส','หน่วย','สถานะ','คงเหลือ','จ่ายเฉลี่ย/เดือน','พอใช้(วัน)','แนะนำสั่ง(หน่วย)','≈หน่วยบรรจุ','มูลค่าโดยประมาณ(บาท)','หมายเหตุ'];
+function dlCsv(name,hd,rows){
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const t='\ufeff'+[hd].concat(rows).map(r=>r.map(q).join(',')).join('\r\n');
+  try{const b=new Blob([t],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);return true;}catch(e){return false;}
+}
+function renderOrder(){
+  const L=orderCalc(),show=S.ordAll?L:L.filter(o=>o.tier<3);
+  const n1=L.filter(o=>o.tier===1).length,n2=L.filter(o=>o.tier===2).length,n3=L.filter(o=>o.tier===3).length;
+  const tv=sum(show.map(o=>o.val||0)),nb=show.filter(o=>o.bad).length;
+  headline($('#od-head'),n1?'bad':n2?'warn':'ok','<span class="hp-hl-t">รายการที่ควรสั่งซื้อ · '+esc(scopeName())+' · ยอดสิ้นเดือน '+esc(mlab(S.to-1))+'</span> <b class="up-bad">เร่งด่วน '+n1+' รายการ</b> (หมดสต็อกแต่ยังมีการจ่าย) · <b>ใกล้หมด '+n2+' รายการ</b>'+(n3?' · วางแผนสั่ง '+n3+' รายการ':'')+' · ประมาณการสั่งซื้อรวม <b>'+baht(tv)+' บาท</b>'+(nb?' (ยังไม่รวม '+nb+' รายการที่ราคาน่าสงสัย)':''));
+  $('#od-ctl').innerHTML='<span class="hp-note">สั่งให้พอใช้</span><div class="hp-seg">'+[30,45,60,90].map(d=>'<button data-act="ordtgt" data-k="'+d+'" aria-pressed="'+(S.tgt===d)+'">'+d+' วัน</button>').join('')+'</div><button class="hp-chip" data-act="ordall" aria-pressed="'+S.ordAll+'">รวมรายการวางแผนสั่ง ('+n3+')</button><span class="hp-grow"></span><button class="hp-btn" data-act="ordcopy">คัดลอก (วางใน Excel)</button><button class="hp-btn" data-act="ordcsv">ดาวน์โหลด CSV</button><button class="hp-btn" data-act="print">พิมพ์</button>';
+  $('#od-n').textContent='ปริมาณแนะนำ = (อัตราจ่ายเฉลี่ยต่อวัน × '+S.tgt+' วัน) − คงเหลือ ปัดขึ้น · '+rateNote()+' · เป็นข้อเสนอเริ่มต้นสำหรับเภสัชกรพิจารณา ยังไม่คำนึงถึงใบสั่งซื้อที่กำลังเข้า ระยะเวลารอของ วันหมดอายุ หรือโควตา · ยาสนับสนุนขอรับจากหน่วยงานอื่น ไม่ใช่การจัดซื้อเอง';
+  const tn={1:['เร่งด่วน','b-bad'],2:['ใกล้หมด','b-warn'],3:['วางแผน','b-ok']};
+  let t='<table><thead><tr><th>รายการ</th><th>หมวด</th><th>ระดับ</th><th>คงเหลือ</th><th>จ่ายเฉลี่ย/เดือน</th><th>พอใช้</th><th>แนะนำสั่ง</th><th>≈ หน่วยบรรจุ</th><th>มูลค่าโดยประมาณ</th></tr></thead><tbody>';
+  show.forEach(o=>{const x=o.x;t+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+dqBadge(x)+'<small>'+esc(x.code)+' · หน่วย '+esc(x.unit)+'</small></td><td>'+esc(pcode(x))+'</td><td><span class="hp-badge '+tn[o.tier][1]+'">'+tn[o.tier][0]+'</span></td><td>'+nf(o.q.b)+'</td><td>'+nf1(o.rate*30)+'</td><td>'+fdosH(o.st.dos)+'</td><td><b>'+nf(o.need)+'</b></td><td>'+(o.boxes==null?'—':nf(o.boxes)+' <small class="hp-mut">× '+nf(o.pk)+'</small>')+'</td><td>'+(o.val==null?'<span class="hp-mut">'+(o.bad?'ตรวจราคา':'—')+'</span>':nf(o.val)+' <small class="hp-mut">บาท</small>')+'</td></tr>';});
+  $('#od-tbl').innerHTML=show.length?t+'</tbody></table>':'<div class="hp-empty">ไม่มีรายการที่ต้องสั่งตามเกณฑ์ในตัวกรองนี้</div>';
+  const info=filt({pc:1,view:1}).map(x=>({x:x,v:agg([x],'v'),st:stat(x)})).filter(o=>o.st.k==='over'||o.st.k==='idle').sort((p,q)=>q.v.b-p.v.b).slice(0,8);
+  $('#od-over').innerHTML=info.length?hbarsHtml(info.map(o=>({label:o.x.label,val:o.v.b,vtxt:baht(o.v.b)+' บาท · '+(o.st.k==='idle'?'ไม่เคลื่อนไหว':'ล้นสต็อก'),color:fcol('d'),warn:!!DQ[o.x.id],attr:'data-act="detail" data-id="'+o.x.id+'"',tip:o.x.label}))):'<div class="hp-empty">ไม่พบรายการล้นสต็อก/ไม่เคลื่อนไหว</div>';
+  ORD_CACHE=show;
+}
+let ORD_CACHE=[];
 function flowStrip(a,m){
   return '<div class="hp-flow">'+FLOW.map(f=>'<span style="--c:'+fcol(f.k)+'">'+f.n+'<b>'+fmtM(a[f.k],m)+'</b></span>').join('')+'</div>';
 }
@@ -203,6 +237,7 @@ function rebuildRange(){
   $('#hp-from').innerHTML=MON.map((_,i)=>opt(i)).join('');
   $('#hp-to').innerHTML=MON.map((_,i)=>opt(i)).join('');
   const f=MON[0],l=MON[AV-1];
+  {const ao=$('#hp-asof');if(ao){const lm=MON[AV-1];ao.textContent=lm?'ยอดสิ้นเดือน '+lm.full+' '+lm.year+' (มีข้อมูล '+AV+' เดือนในปีงบนี้)':'—';}}
   $('#hp-sub').textContent='ปีงบประมาณ '+S.fy+' · '+f.full+' '+f.year+' – '+l.full+' '+l.year+(AV<MON.length?' (มีข้อมูลถึงเดือนล่าสุด)':'')+' · '+nf(D.length)+' รายการในรายงาน · แหล่งข้อมูล: รายงานสรุปยอดคงเหลือเวชภัณฑ์ (ยกมา/รับ/จ่าย/คงเหลือ) รายเดือน';
   const yr=FYS.length>1?FYS[0]+'–'+FYS[FYS.length-1]:String(FYS[0]);
   ['#hp-fy-t','#hp-fy-e'].forEach(q=>{const e=$(q);if(e)e.textContent=yr;});
@@ -234,7 +269,7 @@ function syncControls(){
   {const ex=$('#hp-excl');if(ex){ex.setAttribute('aria-pressed',String(S.excl));$('#hp-excl-n').textContent=Object.keys(DQ).length;}}
   const rows=scope(),a=agg(rows);
   $('#hp-ctx').innerHTML='กำลังดู: <b>'+esc(scopeName())+'</b> · <b>'+esc(rangeLabel())+'</b> · '+(S.m==='q'?'ปริมาณหน่วย <b>'+esc(S.unit)+'</b>':'มูลค่า')+' · คงเหลือ <b>'+fmtM(a.b)+' '+unitTxt()+'</b> · '+cntTxt(rows)+(S.m==='q'?' <span class="hp-unitnote">(ปริมาณรวมได้เฉพาะรายการที่หน่วยนับเดียวกัน)</span>':'');
-  ['overview','cats','groups','abc','items','alerts'].forEach(t=>{$('#hp-'+t).hidden=S.tab!==t;});
+  ['overview','order','cats','groups','abc','items','alerts'].forEach(t=>{$('#hp-'+t).hidden=S.tab!==t;});
   heroRender(rows,a);
 }
 function tankHtml(a){
@@ -333,9 +368,13 @@ function renderOverview(){
   const act=rows.filter(x=>agg([x],'q').d>0);
   const idleV=sum(rows.filter(x=>stat(x).k==='idle').map(x=>agg([x],'v').b));
   const out=rows.filter(x=>stat(x).k==='out').length,low=rows.filter(x=>stat(x).k==='low').length;
+  {const ov=rows.filter(x=>stat(x).k==='over'),ovV=sum(ov.map(x=>agg([x],'v').b));
+   const tile=(ic,c,n,t,sub)=>'<button class="hp-gc" style="border-top:3px solid '+c+'" data-act="tab" data-t="order"><span class="t">'+ic+' '+t+'</span><span class="v">'+nf(n)+' <small class="hp-mut">รายการ</small></span><span class="tp">'+sub+'</span></button>';
+   $('#ov-glance').innerHTML='<h2 class="hp-gh">สรุปวันนี้ อ่านใน 10 วินาที</h2><div class="hp-grid">'+tile('✕','var(--color-bad)',out,'ต้องสั่งเร่งด่วน','หมดสต็อกแต่ยังมีการจ่าย · กดเพื่อดูรายการสั่งซื้อ')+tile('!','var(--color-warn)',low,'ใกล้หมด','พอใช้ไม่ถึง 30 วัน')+tile('◆','var(--cds-chart-muted)',ov.length,'ล้นสต็อก','พอใช้เกิน 180 วัน · มูลค่าคงเหลือ '+baht(ovV)+' บาท · ชะลอการสั่ง')+'</div>';}
   const diff=a.o+a.r-a.d-a.b;
   headline($('#ov-head'),out>0?'bad':'info','<span class="hp-hl-t">'+esc(scopeName())+' · '+esc(rangeLabel())+'</span> ยกมา <b>'+fmtM(a.o)+'</b> + รับ <b>'+fmtM(a.r)+'</b> − จ่าย <b>'+fmtM(a.d)+'</b> = คงเหลือ <b>'+fmtM(a.b)+'</b> '+unitTxt()+(dd!=null?' · สต็อกพอใช้ประมาณ <b>'+fdos(dd)+'</b> ตาม'+rateNote():'')+(out?' · <b class="up-bad">หมดสต็อกแต่ยังมีการจ่าย '+out+' รายการ</b>':'')+(Math.abs(diff)>0.5?' · <b class="up-bad">ตรวจสมการไม่ลงตัว '+nf(diff)+'</b>':''));
-  $('#ov-kpis').innerHTML=FLOW.map(f=>kpi(f.n+(f.k==='o'?' (ต้นช่วง)':f.k==='b'?' (ปลายช่วง)':' (รวมในช่วง)'),cnt('k'+f.k,a[f.k],m==='v'?'b':'n')+' <small>'+unitTxt()+'</small>',f.k==='o'?'ยอดยกมาเดือน '+esc(mlab(S.from-1)):f.k==='b'?'ยอดสิ้นเดือน '+esc(mlab(S.to-1)):nf(rows.filter(x=>{const q=agg([x],m);return q[f.k]>0;}).length)+' รายการที่มี'+f.n)).join('');
+  const pa=aggPrev(rows,m);
+  $('#ov-kpis').innerHTML=FLOW.map(f=>kpi(f.n+(f.k==='o'?' (ต้นช่วง)':f.k==='b'?' (ปลายช่วง)':' (รวมในช่วง)'),cnt('k'+f.k,a[f.k],m==='v'?'b':'n')+' <small>'+unitTxt()+'</small>',f.k==='o'?'ยอดยกมาเดือน '+esc(mlab(S.from-1)):f.k==='b'?'ยอดสิ้นเดือน '+esc(mlab(S.to-1)):nf(rows.filter(x=>{const q=agg([x],m);return q[f.k]>0;}).length)+' รายการที่มี'+f.n+(f.k==='o'?'':dlt(a[f.k],pa&&pa[f.k])))).join('');
   $('#ov-kpis2').innerHTML=
     kpi('วันที่สต็อกพอใช้',dd==null?'—':!isFinite(dd)?'—':cnt('dos',Math.round(dd),'n')+' <small>วัน</small>','คงเหลือ ÷ อัตราจ่ายต่อวัน · '+rateNote())+
     kpi('อัตราหมุนเวียน',tn==null?'—':nf1(tn)+' <small>ครั้ง/ปี</small>','จ่าย ÷ สต็อกเฉลี่ย ปรับเป็นต่อปี')+
@@ -629,6 +668,11 @@ document.addEventListener('click',e=>{
   else if(a==='more'){S.limit+=120;}
   else if(a==='replay'){}
   else if(a==='excl'){S.excl=!S.excl;S.limit=80;}
+  else if(a==='ordtgt'){S.tgt=+el.dataset.k;}
+  else if(a==='ordall'){S.ordAll=!S.ordAll;}
+  else if(a==='ordcopy'){copyText([ORD_H].concat(orderTable(ORD_CACHE)).map(r=>r.join('\t')).join('\n'),el);return;}
+  else if(a==='ordcsv'){const ok=dlCsv('รายการสั่งซื้อแนะนำ-'+mlab(S.to-1).replace(/\s/g,'')+'.csv',ORD_H,orderTable(ORD_CACHE));if(!ok)copyText([ORD_H].concat(orderTable(ORD_CACHE)).map(r=>r.join('\t')).join('\n'),el);return;}
+  else if(a==='method'){const f=$('#hp-methods');if(f){f.open=true;f.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'start'});}return;}
   else if(a==='grall'){S.grAll=!S.grAll;}
   else if(a==='abcf'){ABCF=el.dataset.k;S.tab='abc';}
   else if(a==='togactive'){S.active=!S.active;}
@@ -679,10 +723,11 @@ function render(){
   else if(S.tab==='abc')renderAbc();
   else if(S.tab==='items')renderItems();
   else if(S.tab==='alerts')renderAlerts();
+  else if(S.tab==='order')renderOrder();
   countUps();liqGo();critMark();tabInd();
 }
 function redraw(){go();
-  if(S.tab==='overview')renderOverview();else if(S.tab==='cats')renderCats();else if(S.tab==='groups')renderGroups();else if(S.tab==='abc')renderAbc();else if(S.tab==='items')renderItems();else if(S.tab==='alerts')renderAlerts();
+  if(S.tab==='overview')renderOverview();else if(S.tab==='cats')renderCats();else if(S.tab==='groups')renderGroups();else if(S.tab==='abc')renderAbc();else if(S.tab==='items')renderItems();else if(S.tab==='order')renderOrder();else if(S.tab==='alerts')renderAlerts();
   countUps();liqGo();critMark();tabInd();}
 let lastW=window.innerWidth,rzT=null;
 window.addEventListener('resize',()=>{tabInd();clearTimeout(rzT);rzT=setTimeout(()=>{if(!ready||window.innerWidth===lastW)return;lastW=window.innerWidth;anim=null;redraw();},180);});
