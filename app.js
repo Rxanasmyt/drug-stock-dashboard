@@ -10,7 +10,7 @@ const bahtS=x=>{x=+x||0;return Math.abs(x)>=1e6?d3.format('.2f')(x/1e6)+'M':Math
 const pct=(x,d)=>(x*100).toFixed(d==null?1:d)+'%';
 const trunc=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
 const KEYS=['oq','ov','rq','rv','dq','dv','bq','bv'];
-const S={tab:'overview',m:'v',unit:'',pc:'ALL',mode:'dis',view:'ALL',from:1,to:12,fy:null,q:'',active:true,sort:{k:'bv',d:-1},limit:80,detail:null};
+const S={excl:false,grAll:false,tab:'overview',m:'v',unit:'',pc:'ALL',mode:'dis',view:'ALL',from:1,to:12,fy:null,q:'',active:true,sort:{k:'bv',d:-1},limit:80,detail:null};
 let OFF=0,ABCF='A';
 let ALLM=[],FYS=[],MON=[],AV=12,D=[],CATS=[],SYMS=[],PC=[],catBy={},symBy={},pcBy={},byId={},UNITS=[],ready=false,SIG='';
 let anim='tab',animNow=null,animT=null;
@@ -92,7 +92,7 @@ const turn=a=>{const av=(a.o+a.b)/2;return av>0?a.d/av*365/days():null;};
 const fdosH=v=>{const t=fdos(v);if(v==null||!isFinite(v))return t;const p=Math.min(1,v/240)*100;return '<span class="hp-dosw">'+t+'<span class="hp-dosb" title="แถบเทียบ: แดง < 30 วัน · เขียว 30–180 วัน · เหลือง > 180 วัน"><i style="left:'+p.toFixed(1)+'%"></i></span></span>';};
 const fdos=v=>v==null?'—':!isFinite(v)?'ไม่มีการจ่าย':v>=1000?'> 999 วัน':nf(v)+' วัน';
 function filt(o){
-  return D.filter(x=>(!o.pc||S.pc==='ALL'||x.pcat===S.pc)&&(!o.view||S.view==='ALL'||gk(x)===S.view)&&(!o.unit||S.m!=='q'||!S.unit||x.unit===S.unit));
+  return D.filter(x=>(!S.excl||!DQ[x.id])&&(!o.pc||S.pc==='ALL'||x.pcat===S.pc)&&(!o.view||S.view==='ALL'||gk(x)===S.view)&&(!o.unit||S.m!=='q'||!S.unit||x.unit===S.unit));
 }
 const scope=()=>filt({pc:1,view:1,unit:1});
 function stat(x){
@@ -121,13 +121,71 @@ function countUps(){
     if(!animNow||reduced())return;
     if(animNow==='tab'||from==null)from=0;
     tween(el,from,to,fmt,animNow==='tab'?1400:500);
+    if(animNow==='data'&&from!==to){el.classList.remove('hp-flash');void el.offsetWidth;el.classList.add('hp-flash');}
   });
 }
 function headline(host,tone,html){host.className='hp-headline '+tone;host.innerHTML='<i></i><div>'+html+'</div>';}
 function kpi(l,n,s,sp){return '<div class="hp-kpi">'+(sp?'<span class="sp">'+sp+'</span>':'')+'<span class="l">'+l+'</span><span class="n">'+n+'</span><span class="s">'+s+'</span></div>';}
 function hbars(host,list,max){
   max=max||d3.max(list,d=>d.val)||1;
-  host.innerHTML=list.length?list.map((d,i)=>'<button class="hp-hb" '+d.attr+' data-tip="'+esc(d.tip||'')+'"><span class="hp-hb-l">'+esc(d.label)+'</span><span class="hp-hb-t"><i style="--i:'+i+';width:'+Math.max(1,d.val/max*100).toFixed(1)+'%;background:linear-gradient(90deg,'+(d.color||col(0))+',color-mix(in srgb,'+(d.color||col(0))+' 65%,transparent))"></i></span><span class="hp-hb-v">'+esc(d.vtxt)+'</span></button>').join(''):'<div class="hp-empty">ไม่มีข้อมูลในตัวกรองที่เลือก</div>';
+  host.innerHTML=list.length?list.map((d,i)=>'<button class="hp-hb" '+d.attr+' data-tip="'+esc(d.tip||'')+'"><span class="hp-hb-l">'+(d.warn?'<b class="hp-wm" title="ราคาต่อหน่วยน่าสงสัย">!</b> ':'')+esc(d.label)+'</span><span class="hp-hb-t"><i style="--i:'+i+';width:'+Math.max(1,d.val/max*100).toFixed(1)+'%;background:linear-gradient(90deg,'+(d.color||col(0))+',color-mix(in srgb,'+(d.color||col(0))+' 65%,transparent))"></i></span><span class="hp-hb-v">'+esc(d.vtxt)+'</span></button>').join(''):'<div class="hp-empty">ไม่มีข้อมูลในตัวกรองที่เลือก</div>';
+}
+function lgd(items){return '<div class="hp-lg">'+items.map(i=>'<span'+(i[2]?' class="ln"':'')+' style="--c:'+i[1]+'">'+i[0]+'</span>').join('')+'</div>';}
+function pairBars(list){
+  const mx=d3.max(list,d=>Math.max(d.b,d.d))||1;
+  return list.length?list.map((d,i)=>'<button class="hp-pb" '+d.attr+' data-tip="'+esc(d.tip||'')+'"><span class="hp-hb-l">'+(d.warn?'<b class="hp-wm">!</b> ':'')+esc(d.label)+'</span><span class="hp-pb-t"><i style="--i:'+i+';width:'+Math.max(.6,d.b/mx*100).toFixed(1)+'%;background:'+fcol('b')+'"></i><i class="d" style="--i:'+i+';width:'+Math.max(.6,d.d/mx*100).toFixed(1)+'%;background:'+fcol('d')+'"></i></span><span class="hp-pb-v"><b>'+fmtM(d.b)+'</b><small>จ่าย '+fmtM(d.d)+'</small></span></button>').join(''):'<div class="hp-empty">ไม่มีข้อมูล</div>';
+}
+const isSupG=g=>g.code.indexOf('sup_')===0;
+function spark(x){
+  const v=[];for(let i=0;i<AV;i++)v.push(x.bv[i]);if(v.length<2)return '';
+  const mx=Math.max.apply(null,v),mn=Math.min.apply(null,v),W=68,H=22,sx=i=>2+i*(W-4)/(v.length-1),sy=y=>mx===mn?H/2:H-3-(y-mn)/(mx-mn)*(H-6);
+  const up=v[v.length-1]>=v[0];
+  return '<svg class="hp-sp" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'"><path d="'+v.map((y,i)=>(i?'L':'M')+sx(i).toFixed(1)+' '+sy(y).toFixed(1)).join('')+'" fill="none" stroke="'+(up?fcol('r'):fcol('d'))+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="'+sx(v.length-1).toFixed(1)+'" cy="'+sy(v[v.length-1]).toFixed(1)+'" r="2.4" fill="'+(up?fcol('r'):fcol('d'))+'"/></svg>';
+}
+function treemap(host,gs){
+  const W=Math.max(300,host.clientWidth||600),H=W<520?300:340;
+  const data=gs.filter(o=>o.a.b>0);if(!data.length){host.innerHTML='<div class="hp-empty">ไม่มียอดคงเหลือในตัวกรองนี้</div>';return;}
+  const root=d3.hierarchy({children:data}).sum(d=>d.a?d.a.b:0).sort((p,q)=>q.value-p.value);
+  d3.treemap().size([W,H]).paddingInner(3).round(true)(root);
+  const zc=o=>{const ds=dos(o.a);if(ds==null||!isFinite(ds))return '#7d8a99';return ds<30?'var(--color-bad)':ds>180?'var(--color-warn)':'var(--color-ok)';};
+  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="แผนที่สต็อกตามกลุ่ม ขนาด = มูลค่าคงเหลือ">';
+  root.leaves().forEach((n,i)=>{const o=n.data,w=n.x1-n.x0,hh=n.y1-n.y0,ds=dos(o.a);
+    s+='<g class="hp-tmg" style="--i:'+i+'" data-act="view" data-k="'+esc(o.g.code)+'" data-tip="'+esc(o.g.name+'\nคงเหลือ '+fmtM(o.a.b)+' '+unitTxt()+'\nจ่าย '+fmtM(o.a.d)+'\nวันที่พอใช้ '+fdos(ds))+'" style="cursor:pointer"><rect x="'+n.x0+'" y="'+n.y0+'" width="'+w+'" height="'+hh+'" rx="8" style="fill:'+zc(o)+';opacity:.82"'+(isSupG(o.g)?' stroke="var(--color-fg)" stroke-dasharray="4 3" fill-opacity=".9"':'')+'/>';
+    if(w>64&&hh>34)s+='<text x="'+(n.x0+8)+'" y="'+(n.y0+19)+'" class="hp-tml">'+esc(trunc(o.g.short,Math.max(4,Math.floor(w/9))))+'</text><text x="'+(n.x0+8)+'" y="'+(n.y0+35)+'" class="hp-tmv">'+fmtM(o.a.b)+'</text>';
+    s+='</g>';});
+  host.innerHTML=s+'</svg>';
+}
+function sankey(host){
+  const rows=filt({view:1,unit:1});const W=Math.max(300,host.clientWidth||640),H=W<520?300:340,lm=W<520?58:78,rm=W<520?92:122,nw=14;
+  const P=PC.map(p=>{const rs=rows.filter(x=>x.pcat===p.code);const a=agg(rs,'v');return {p:p,a:a};}).filter(o=>o.a.o+o.a.r>0);
+  const tO=sum(P.map(o=>o.a.o)),tR=sum(P.map(o=>o.a.r)),tD=sum(P.map(o=>o.a.d)),tB=sum(P.map(o=>o.a.b));
+  const tot=tO+tR;if(!tot){host.innerHTML='<div class="hp-empty">ไม่มียอดให้แสดง</div>';return;}
+  const gap=8,ky=(H-gap*Math.max(P.length,2)-8)/tot;
+  const xL=lm,xM=lm+(W-lm-rm)/2-nw/2,xR=W-rm-nw;
+  let y=4;const L={};['o','r'].forEach(k=>{const v=k==='o'?tO:tR;L[k]={y0:y,h:v*ky,cur:y};y+=v*ky+gap*2;});
+  y=4;P.forEach(o=>{o.y0=y;o.h=(o.a.o+o.a.r)*ky;o.inc=y;o.out=y;y+=o.h+gap;});
+  const R={};y=4;[['d',tD],['b',tB]].forEach(([k,v])=>{R[k]={y0:y,h:v*ky,cur:y};y+=v*ky+gap*2;});
+  const rib=(x1,a0,a1,x2,b0,b1,c,tip)=>{const xm=(x1+x2)/2;return '<path class="hp-rib" d="M'+x1+' '+a0+' C'+xm+' '+a0+','+xm+' '+b0+','+x2+' '+b0+' L'+x2+' '+b1+' C'+xm+' '+b1+','+xm+' '+a1+','+x1+' '+a1+' Z" style="fill:'+c+'" data-tip="'+esc(tip)+'"/>';};
+  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="แผนภาพการไหลของมูลค่า ยกมาและรับ ผ่านแต่ละหมวด ไปสู่จ่ายและคงเหลือ">';
+  P.forEach(o=>{
+    [['o',o.a.o,fcol('o')],['r',o.a.r,fcol('r')]].forEach(([k,v,c])=>{if(v<=0)return;const hh=v*ky;s+=rib(xL+nw,L[k].cur,L[k].cur+hh,xM,o.inc,o.inc+hh,c,(k==='o'?'ยกมา':'รับ')+' → '+o.p.short+'\n'+baht(v)+' บาท');L[k].cur+=hh;o.inc+=hh;});
+    [['d',o.a.d,fcol('d')],['b',o.a.b,fcol('b')]].forEach(([k,v,c])=>{if(v<=0)return;const hh=v*ky;s+=rib(xM+nw,o.out,o.out+hh,xR,R[k].cur,R[k].cur+hh,c,o.p.short+' → '+(k==='d'?'จ่าย':'คงเหลือ')+'\n'+baht(v)+' บาท');R[k].cur+=hh;o.out+=hh;});
+  });
+  [['o','ยกมา',tO,fcol('o')],['r','รับ',tR,fcol('r')]].forEach(([k,t,v,c])=>{s+='<rect x="'+xL+'" y="'+L[k].y0+'" width="'+nw+'" height="'+Math.max(2,L[k].h)+'" rx="3" style="fill:'+c+'"/><text class="hp-ax" x="'+(xL-6)+'" y="'+(L[k].y0+Math.min(L[k].h/2,14)+4)+'" text-anchor="end" style="fill:var(--color-fg);font-weight:600">'+t+'</text><text class="hp-ax" x="'+(xL-6)+'" y="'+(L[k].y0+Math.min(L[k].h/2,14)+18)+'" text-anchor="end">'+bahtS(v)+'</text>';});
+  let ly=-99;
+  P.forEach(o=>{s+='<rect x="'+xM+'" y="'+o.y0+'" width="'+nw+'" height="'+Math.max(2,o.h)+'" rx="3" style="fill:var(--color-fg-muted)" data-act="pc" data-k="'+esc(o.p.code)+'" data-tip="'+esc(o.p.name+'\nยกมา+รับ '+baht(o.a.o+o.a.r)+' บาท\nจ่าย '+baht(o.a.d)+' · คงเหลือ '+baht(o.a.b))+'"/>';
+    let yy=o.y0+Math.max(2,o.h)/2+4;if(yy-ly<15)yy=ly+15;ly=yy;
+    s+='<text class="hp-ax hp-halo" x="'+(xM+nw+6)+'" y="'+yy.toFixed(1)+'" style="font-weight:600;fill:var(--color-fg)">'+esc(o.p.short)+(W<520?'':' '+bahtS(o.a.o+o.a.r))+'</text>';});
+  [['d','จ่าย',tD,fcol('d')],['b','คงเหลือ',tB,fcol('b')]].forEach(([k,t,v,c])=>{s+='<rect x="'+xR+'" y="'+R[k].y0+'" width="'+nw+'" height="'+Math.max(2,R[k].h)+'" rx="3" style="fill:'+c+'"/><text class="hp-ax" x="'+(xR+nw+6)+'" y="'+(R[k].y0+Math.min(R[k].h/2,14)+4)+'" style="fill:var(--color-fg);font-weight:600">'+t+'</text><text class="hp-ax" x="'+(xR+nw+6)+'" y="'+(R[k].y0+Math.min(R[k].h/2,14)+18)+'">'+bahtS(v)+'</text>';});
+  host.innerHTML=s+'</svg>';
+}
+function heatmap(host){
+  const rows=filt({view:1,unit:1}),n=MON.length;
+  const data=PC.map(p=>{const rs=rows.filter(x=>x.pcat===p.code);const arr=[];for(let i=0;i<n;i++){let d=0;rs.forEach(x=>{d+=x.dv[i];});arr.push(d);}return {p:p,arr:arr,n:rs.length};}).filter(o=>o.n>0);
+  const mx=d3.max(data,o=>d3.max(o.arr.slice(0,AV)))||1;
+  let h='<div class="hp-hm" style="--n:'+n+'"><span></span>'+MON.map((m,i)=>'<span class="hp-hmh'+(i<AV?'':' off')+'">'+esc(m.short)+'</span>').join('');
+  data.forEach((o,r)=>{h+='<span class="hp-hml">'+esc(o.p.short)+'</span>'+o.arr.map((v,i)=>i<AV?'<span class="hp-hmc" style="--a:'+(v>0?(.12+.88*Math.sqrt(v/mx)).toFixed(2):0)+';--i:'+(r*n+i)+'" data-tip="'+esc(o.p.name+' · '+MON[i].full+' '+MON[i].year+'\nจ่าย '+baht(v)+' บาท')+'">'+(v>0?bahtS(v):'–')+'</span>':'<span class="hp-hmc off">·</span>').join('');});
+  host.innerHTML=h+'</div>';
 }
 function flowStrip(a,m){
   return '<div class="hp-flow">'+FLOW.map(f=>'<span style="--c:'+fcol(f.k)+'">'+f.n+'<b>'+fmtM(a[f.k],m)+'</b></span>').join('')+'</div>';
@@ -161,7 +219,7 @@ function buildChips(){
 }
 function setMode(m){S.mode=m;S.view='ALL';S.limit=80;buildChips();}
 function viewName(){if(S.view==='ALL')return 'ทุกกลุ่ม';const g=(S.mode==='sym'?symBy:catBy)[S.view];return g?g.short:S.view;}
-function scopeName(){return (S.pc==='ALL'?'ทุกหมวด':pcBy[S.pc].short)+' · '+viewName();}
+function scopeName(){return (S.pc==='ALL'?'ทุกหมวด':pcBy[S.pc].short)+' · '+viewName()+(S.excl?' · ไม่รวมรายการราคาน่าสงสัย':'');}
 function syncControls(){
   $('#hp-from').value=S.from;$('#hp-to').value=S.to;
   $$('#hp-fy button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.y===S.fy)));
@@ -173,6 +231,7 @@ function syncControls(){
   $$('#hp-chips-a .hp-chip,#hp-chips-s .hp-chip').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.k===S.view)));
   $$('#hp-tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===S.tab)));
   $('#hp-act').setAttribute('aria-pressed',String(S.active));
+  {const ex=$('#hp-excl');if(ex){ex.setAttribute('aria-pressed',String(S.excl));$('#hp-excl-n').textContent=Object.keys(DQ).length;}}
   const rows=scope(),a=agg(rows);
   $('#hp-ctx').innerHTML='กำลังดู: <b>'+esc(scopeName())+'</b> · <b>'+esc(rangeLabel())+'</b> · '+(S.m==='q'?'ปริมาณหน่วย <b>'+esc(S.unit)+'</b>':'มูลค่า')+' · คงเหลือ <b>'+fmtM(a.b)+' '+unitTxt()+'</b> · '+cntTxt(rows)+(S.m==='q'?' <span class="hp-unitnote">(ปริมาณรวมได้เฉพาะรายการที่หน่วยนับเดียวกัน)</span>':'');
   ['overview','cats','groups','abc','items','alerts'].forEach(t=>{$('#hp-'+t).hidden=S.tab!==t;});
@@ -201,7 +260,7 @@ function heroRender(rows,a){
 
 /* ---------- charts ---------- */
 function flowChart(host,a,m){
-  const W=Math.max(300,host.clientWidth||520),RH=40,H=4*RH+16;
+  const W=Math.max(300,host.clientWidth||520),RH=W<520?46:54,H=4*RH+16;
   const top=Math.max(a.o+a.r,a.o,a.b,1);
   const lw=W<520?70:90,rm=W<520?78:110;
   const x=d3.scaleLinear([0,top*1.02],[lw,W-rm]);
@@ -215,12 +274,13 @@ function flowChart(host,a,m){
       '<text class="hp-ax" x="'+(Math.max(x0,x1)+6).toFixed(1)+'" y="'+(y+bh/2+4)+'" style="fill:var(--color-fg);font-weight:600">'+fmtM(st.v,m)+'</text></g>';
     if(i===1||i===2){const nx=x(i===1?a.o+a.r:a.o+a.r-a.d);s+='<line x1="'+nx.toFixed(1)+'" x2="'+nx.toFixed(1)+'" y1="'+(y+bh)+'" y2="'+(y+RH)+'" style="stroke:var(--cds-chart-axis)" stroke-dasharray="2 3"/>';}
   });
+  let cmp='';if(PREV&&PREV.d>0&&S.from===S.to){const dd2=(a.d-PREV.d)/PREV.d;cmp='<br><span class="hp-mut">เทียบเดือนก่อน: จ่าย '+(dd2>=0?'▲ +':'▼ ')+pct(Math.abs(dd2),0)+' ('+fmtM(PREV.d,m)+(m==='q'?' '+(S.unit||''):' บาท')+')</span>';}
   const dl=a.b-a.o,pc2=a.o>0?Math.abs(dl)/a.o:null,un=m==='q'?' '+(S.unit||''):' บาท';
   const sum2=a.o+a.r+a.d+a.b===0?'ไม่มีความเคลื่อนไหวในช่วงนี้':'ช่วงนี้ <b style="color:'+fcol('r')+'">รับ '+fmtM(a.r,m)+'</b> · <b style="color:'+fcol('d')+'">จ่าย '+fmtM(a.d,m)+'</b>'+un+' → '+(a.r>a.d?'รับมากกว่าจ่าย ':a.r<a.d?'จ่ายมากกว่ารับ ':'รับเท่ากับจ่าย ')+'คงเหลือ<b>'+(dl>0?'เพิ่มขึ้น ▲ ':dl<0?'ลดลง ▼ ':'เท่าเดิม ')+(dl?fmtM(Math.abs(dl),m)+un:'')+(pc2!=null&&dl?' ('+pct(pc2,0)+' ของยอดยกมา)':'')+'</b>';
-  host.innerHTML='<p class="hp-sum2">'+sum2+'</p>'+s+'</svg>';
+  host.innerHTML='<p class="hp-sum2">'+sum2+cmp+'</p>'+s+'</svg>';
 }
 function trendChart(host,ser,m){
-  const n=ser.length,W=Math.max(300,host.clientWidth||600),H=270;
+  const AVn=ser.length,n=Math.max(MON.length,AVn),W=Math.max(300,host.clientWidth||600),H=270;
   const mx=d3.max(ser,d=>Math.max(d.r,d.d,d.b))||1;
   const y=d3.scaleLinear([0,mx*1.18],[H-28,14]).nice(),ticks=y.ticks(5);
   const lm=Math.max.apply(null,ticks.map(t=>nf(t).length))*6.6+14;
@@ -236,12 +296,13 @@ function trendChart(host,ser,m){
       s+='<rect class="hp-bar" data-i="'+i+'" style="--i:'+(i*2+j)+';fill:'+fcol(k)+';opacity:'+(inr?1:.3)+'" x="'+bx.toFixed(1)+'" y="'+y(d[k]).toFixed(1)+'" width="'+ib.bandwidth().toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="4"/>';
       if(d[k]>0&&n<=3)s+='<text class="hp-ax" x="'+(bx+ib.bandwidth()/2).toFixed(1)+'" y="'+(y(d[k])-5).toFixed(1)+'" text-anchor="middle">'+(m==='v'?bahtS(d[k]):nf(d[k]))+'</text>';
     });
-    s+='<text class="hp-ax" x="'+(x(i)+x.bandwidth()/2).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(MON[i].short)+'</text>';
+    s+='<text class="hp-ax" x="'+(x(i)+x.bandwidth()/2).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" style="font-weight:600;fill:var(--color-fg)">'+esc(MON[i].short)+'</text>';
   });
+  for(let i=AVn;i<n;i++){s+='<rect x="'+(x(i)+x.bandwidth()*.2).toFixed(1)+'" y="'+(y(0)-3).toFixed(1)+'" width="'+(x.bandwidth()*.6).toFixed(1)+'" height="3" rx="1.5" style="fill:var(--cds-chart-grid)"/><text class="hp-ax" x="'+(x(i)+x.bandwidth()/2).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" style="opacity:.45">'+esc(MON[i]?MON[i].short:'')+'</text>';}
   const pts=ser.map((d,i)=>[x(i)+x.bandwidth()/2,y(d.b)]);
-  if(n>1)s+='<path class="hp-line" pathLength="1" d="'+d3.line()(pts)+'" fill="none" style="stroke:'+fcol('b')+'" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
+  if(AVn>1)s+='<path class="hp-line" pathLength="1" d="'+d3.line()(pts)+'" fill="none" style="stroke:'+fcol('b')+'" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
   const mxI=ser.reduce((m2,d,i)=>d.b>ser[m2].b?i:m2,0);
-  pts.forEach((p,i)=>{const lab=n<=4||i===0||i===n-1||i===mxI;s+='<circle class="hp-dot" style="--i:'+i+';fill:'+fcol('b')+'" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="4"/>'+(lab?'<text class="hp-ax" x="'+p[0].toFixed(1)+'" y="'+(p[1]-9).toFixed(1)+'" text-anchor="middle" style="fill:var(--color-fg);font-weight:600">'+(m==='v'?bahtS(ser[i].b):nf(ser[i].b))+'</text>':'');});
+  pts.forEach((p,i)=>{const lab=AVn<=4||i===0||i===AVn-1||i===mxI;s+='<circle class="hp-dot" style="--i:'+i+';fill:'+fcol('b')+'" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="4"/>'+(lab?'<text class="hp-ax" x="'+p[0].toFixed(1)+'" y="'+(p[1]-9).toFixed(1)+'" text-anchor="middle" style="fill:var(--color-fg);font-weight:600">'+(m==='v'?bahtS(ser[i].b):nf(ser[i].b))+'</text>':'');});
   const step=x.step();
   ser.forEach((d,i)=>{
     const tip=[MON[i].full+' '+MON[i].year,'ยกมา: '+fmtM(d.o,m),'รับ: '+fmtM(d.r,m),'จ่าย: '+fmtM(d.d,m),'คงเหลือ: '+fmtM(d.b,m)].join('\n');
@@ -256,13 +317,13 @@ function flowCells(a,m,withDos){
 }
 function pcTable(host){
   const rows=filt({view:1,unit:1});
-  let h='<table><thead><tr><th>หมวดสินค้า</th><th>รายการ (เคลื่อนไหว / ทั้งหมด)</th><th></th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>สัดส่วนคงเหลือ</th><th>วันที่พอใช้</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>หมวดสินค้า</th><th>รายการ (เคลื่อนไหว / ทั้งหมด)</th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>สัดส่วนคงเหลือ</th><th>วันที่พอใช้</th></tr></thead><tbody>';
   const tot=agg(rows);
   PC.forEach(p=>{
     const rs=rows.filter(x=>x.pcat===p.code),a=agg(rs);
-    h+='<tr data-act="pc" data-k="'+esc(p.code)+'"'+(S.pc===p.code?' class="sel"':'')+'><td title="'+esc(p.name)+'">'+esc(p.name)+'</td><td>'+nf(nAct(rs))+' <small class="hp-mut">/ '+nf(rs.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(a)+'<td>'+(tot.b?pct(a.b/tot.b,1):'—')+'</td><td>'+fdosH(dos(a))+'</td></tr>';
+    h+='<tr data-act="pc" data-k="'+esc(p.code)+'"'+(S.pc===p.code?' class="sel"':'')+'><td title="'+esc(p.name)+'">'+esc(p.name)+'</td><td>'+nf(nAct(rs))+' <small class="hp-mut">/ '+nf(rs.length)+'</small></td>'+flowCells(a)+'<td>'+(tot.b?pct(a.b/tot.b,1):'—')+'</td><td>'+fdosH(dos(a))+'</td></tr>';
   });
-  h+='<tr class="tot"><td>รวม</td><td>'+nf(nAct(rows))+' <small class="hp-mut">/ '+nf(rows.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(tot)+'<td>100%</td><td>'+fdosH(dos(tot))+'</td></tr></tbody></table>';
+  h+='<tr class="tot"><td>รวม</td><td>'+nf(nAct(rows))+' <small class="hp-mut">/ '+nf(rows.length)+'</small></td>'+flowCells(tot)+'<td>100%</td><td>'+fdosH(dos(tot))+'</td></tr></tbody></table>';
   host.innerHTML=h;
 }
 
@@ -282,22 +343,24 @@ function renderOverview(){
     kpi('ไม่เคลื่อนไหวแต่มีของ',baht(idleV)+' <small>บาท</small>','มูลค่าคงเหลือของรายการที่ไม่มีการจ่ายในช่วง');
   $('#ov-wf-h').textContent='ยกมา + รับ − จ่าย = คงเหลือ ('+(m==='v'?'มูลค่า':'ปริมาณ '+S.unit)+')';
   $('#ov-wf-n').textContent='ความยาวแท่งเทียบกันในหน่วยเดียวกัน · '+rangeLabel();
+  PREV=S.from>1?ser[S.from-2]||null:null;
   flowChart($('#ov-wf'),a,m);
   $('#ov-trend-h').textContent='รับ จ่าย และคงเหลือรายเดือน';
-  $('#ov-trend-n').textContent=AV<2?'มีข้อมูล 1 เดือน ('+mlab(0)+') เส้นแนวโน้มจะแสดงเมื่อเพิ่มข้อมูลเดือนถัดไป · แท่ง = รับ/จ่ายในเดือน เส้น = คงเหลือสิ้นเดือน':'แท่ง = รับ/จ่ายในเดือน เส้น = คงเหลือสิ้นเดือน · แท่งจาง = เดือนนอกช่วงที่เลือก';
+  $('#ov-trend-n').textContent=AV<MON.length?'กรอบ '+MON.length+' เดือนของปีงบ · มีข้อมูล '+AV+' เดือน (เดือนที่เหลือเป็นช่องว่าง รอข้อมูลถัดไป) · แท่ง = รับ/จ่ายในเดือน เส้น = คงเหลือสิ้นเดือน':'แท่ง = รับ/จ่ายในเดือน เส้น = คงเหลือสิ้นเดือน · แท่งจาง = เดือนนอกช่วงที่เลือก';
   trendChart($('#ov-trend'),ser,m);
   $('#ov-trend-lg').innerHTML='<span style="--c:'+fcol('r')+'">รับ</span><span style="--c:'+fcol('d')+'">จ่าย</span><span class="ln" style="--c:'+fcol('b')+'">คงเหลือสิ้นเดือน</span>';
-  $('#ov-pc-n').textContent='ตามตัวกรองกลุ่มโรค'+(S.m==='q'?' และหน่วยนับ '+S.unit:'')+'ที่เลือก · กดแถวเพื่อกรองเฉพาะหมวดนั้น';
+  $('#ov-pc-n').textContent='หน่วย: '+unitTxt()+' · แถบใต้วันที่พอใช้: แดง < 30 · เขียว 30–180 · เหลือง > 180 วัน · ตามตัวกรองกลุ่มโรค'+(S.m==='q'?' และหน่วยนับ '+S.unit:'')+'ที่เลือก · กดแถวเพื่อกรองเฉพาะหมวดนั้น';
   pcTable($('#ov-pc'));
   // groups
   const base=filt({pc:1,unit:1});
-  const gs=GR().map(g=>{const rs=base.filter(x=>gk(x)===g.code);return {g:g,a:agg(rs),n:rs.length};}).filter(o=>o.n>0&&(o.a.b>0||o.a.d>0)).sort((p,q)=>q.a.b-p.a.b);
-  $('#ov-grp-h').textContent='คงเหลือตามกลุ่ม'+(S.mode==='sym'?'อาการ':'โรค');
-  $('#ov-grp-n').textContent='แท่ง = คงเหลือ · ตัวเลขท้ายแถว = คงเหลือ / จ่ายในช่วง · กดเพื่อเลือกกลุ่ม';
-  hbars($('#ov-grp'),gs.slice(0,12).map(o=>({label:o.g.short,val:o.a.b,vtxt:fmtM(o.a.b)+' / '+fmtM(o.a.d),color:col(0),attr:'data-act="view" data-k="'+esc(o.g.code)+'"',tip:o.g.name+'\nคงเหลือ '+fmtM(o.a.b)+' '+unitTxt()+'\nจ่าย '+fmtM(o.a.d)+'\nรับ '+fmtM(o.a.r)})));
+  const gsAll=GR().map(g=>{const rs=base.filter(x=>gk(x)===g.code);return {g:g,a:agg(rs),n:rs.length};}).filter(o=>o.n>0&&(o.a.b>0||o.a.d>0)).sort((p,q)=>q.a.b-p.a.b);
+  const gs=gsAll.filter(o=>!isSupG(o.g)),gsS=gsAll.filter(o=>isSupG(o.g));
+  $('#ov-grp-h').textContent='คงเหลือตามกลุ่ม'+(S.mode==='sym'?'อาการ':'โรค')+' (ยา)';
+  $('#ov-grp-n').textContent='แท่งหนา = คงเหลือ · แท่งบาง = จ่ายในช่วง · กดเพื่อเลือกกลุ่ม'+(gsS.length?' · กลุ่มวัสดุ/เวชภัณฑ์มิใช่ยาดูในแท็บเทียบกลุ่ม':'');
+  $('#ov-grp').innerHTML=lgd([['คงเหลือ',fcol('b')],['จ่ายในช่วง',fcol('d')]])+pairBars(gs.slice(0,8).map(o=>({label:o.g.short,b:o.a.b,d:o.a.d,attr:'data-act="view" data-k="'+esc(o.g.code)+'"',tip:o.g.name+'\nคงเหลือ '+fmtM(o.a.b)+' '+unitTxt()+'\nจ่าย '+fmtM(o.a.d)+'\nรับ '+fmtM(o.a.r)})));
   const top=rows.map(x=>({x:x,a:agg([x])})).filter(o=>o.a.b>0).sort((p,q)=>q.a.b-p.a.b).slice(0,10);
   $('#ov-top-h').textContent='10 รายการที่คงเหลือสูงสุด ('+(m==='v'?'มูลค่า':'ปริมาณ '+S.unit)+')';
-  hbars($('#ov-top'),top.map(o=>({label:o.x.label,val:o.a.b,vtxt:fmtM(o.a.b)+' · จ่าย '+fmtM(o.a.d),color:col(1),attr:'data-act="detail" data-id="'+o.x.id+'"',tip:o.x.label+'\nคงเหลือ '+fmtM(o.a.b)+' '+unitTxt()+'\nจ่าย '+fmtM(o.a.d)+'\nวันที่พอใช้ '+fdos(dos(o.a))})));
+  hbars($('#ov-top'),top.map(o=>({label:o.x.label,val:o.a.b,vtxt:fmtM(o.a.b)+' · จ่าย '+fmtM(o.a.d),color:col(1),warn:!!DQ[o.x.id],attr:'data-act="detail" data-id="'+o.x.id+'"',tip:o.x.label+(DQ[o.x.id]?'\n! ราคาต่อหน่วยน่าสงสัย':'')+'\nคงเหลือ '+fmtM(o.a.b)+' '+unitTxt()+'\nจ่าย '+fmtM(o.a.d)+'\nวันที่พอใช้ '+fdos(dos(o.a))})));
 }
 
 /* ---------- cats ---------- */
@@ -305,6 +368,7 @@ function renderCats(){
   const rows=filt({view:1}),m=S.m;
   const tv=agg(rows,'v');
   headline($('#ct-head'),'info','<span class="hp-hl-t">แยกตามหมวดสินค้า · '+esc(rangeLabel())+'</span> มูลค่าคงเหลือรวม <b>'+baht(tv.b)+' บาท</b> จ่ายในช่วง <b>'+baht(tv.d)+' บาท</b> รับ <b>'+baht(tv.r)+' บาท</b> · กลุ่ม: '+esc(viewName()));
+  sankey($('#ct-sk'));heatmap($('#ct-hm'));
   $('#ct-cards').innerHTML=PC.map((p,i)=>{
     const rs=rows.filter(x=>x.pcat===p.code),a=agg(rs,'v');
     const uq={};rs.forEach(x=>{const q=agg([x],'q');const u=uq[x.unit]=uq[x.unit]||{o:0,r:0,d:0,b:0};u.o+=q.o;u.r+=q.r;u.d+=q.d;u.b+=q.b;});
@@ -332,18 +396,24 @@ function renderCats(){
 function renderGroups(){
   const base=filt({pc:1,unit:1}),m=S.m;
   const all=agg(base);
-  const gs=GR().map(g=>{const rs=base.filter(x=>gk(x)===g.code);return {g:g,rs:rs,a:agg(rs),n:rs.length,na:nAct(rs)};}).filter(o=>o.n>0).sort((p,q)=>q.a.b-p.a.b);
-  const topG=gs[0];
+  const gsA=GR().map(g=>{const rs=base.filter(x=>gk(x)===g.code);return {g:g,rs:rs,a:agg(rs),n:rs.length,na:nAct(rs)};}).filter(o=>o.n>0).sort((p,q)=>q.a.b-p.a.b);
+  const dr=gsA.filter(o=>!isSupG(o.g)),su=gsA.filter(o=>isSupG(o.g));
+  const topG=dr[0]||su[0];
   headline($('#gr-head'),'info','<span class="hp-hl-t">เทียบกลุ่ม'+(S.mode==='sym'?'อาการ':'โรค')+' · '+esc(S.pc==='ALL'?'ทุกหมวด':pcBy[S.pc].short)+' · '+esc(rangeLabel())+'</span> '+(topG&&all.b?'กลุ่มที่คงเหลือมากสุด: <b>'+esc(topG.g.short)+'</b> '+fmtM(topG.a.b)+' '+unitTxt()+' ('+pct(topG.a.b/all.b,0)+')':'ไม่มีข้อมูลในตัวกรองนี้'));
+  $('#gr-tm-n').textContent='ขนาดพื้นที่ = '+(m==='v'?'มูลค่า':'ปริมาณ '+S.unit)+'คงเหลือ · สี = วันที่สต็อกพอใช้ (แดง < 30 · เขียว 30–180 · เหลือง > 180 · เทา = ไม่มีการจ่าย) · กรอบประ = กลุ่มวัสดุ/เวชภัณฑ์มิใช่ยา · กดเพื่อเลือกกลุ่ม';
+  treemap($('#gr-tm'),gsA);
   $('#gr-bars-h').textContent='คงเหลือและจ่ายออกตามกลุ่ม'+(S.mode==='sym'?'อาการ':'โรค');
-  $('#gr-n').textContent='แท่งสี 1 = คงเหลือ · แท่งสี 2 = จ่ายในช่วง · '+(m==='v'?'มูลค่า (บาท)':'ปริมาณหน่วย '+S.unit)+' · กดเพื่อเลือกกลุ่ม';
-  const mx=d3.max(gs,o=>Math.max(o.a.b,o.a.d))||1;
-  const host=$('#gr-bars');
-  host.innerHTML=gs.length?gs.map((o,i)=>'<div style="display:grid;gap:2px;margin-bottom:6px"><button class="hp-hb" data-act="view" data-k="'+esc(o.g.code)+'" data-tip="'+esc(o.g.name+'\nคงเหลือ '+fmtM(o.a.b)+'\nจ่าย '+fmtM(o.a.d))+'"><span class="hp-hb-l">'+esc(o.g.short)+'</span><span class="hp-hb-t"><i style="--i:'+i+';width:'+Math.max(1,o.a.b/mx*100).toFixed(1)+'%;background:'+fcol('b')+'"></i></span><span class="hp-hb-v">'+fmtM(o.a.b)+'</span></button><button class="hp-hb" data-act="view" data-k="'+esc(o.g.code)+'"><span class="hp-hb-l hp-mut">จ่าย</span><span class="hp-hb-t"><i style="--i:'+i+';width:'+Math.max(1,o.a.d/mx*100).toFixed(1)+'%;background:'+fcol('d')+'"></i></span><span class="hp-hb-v hp-mut">'+fmtM(o.a.d)+'</span></button></div>').join(''):'<div class="hp-empty">ไม่มีข้อมูล</div>';
-  $('#gr-tn').textContent='ตามหมวดที่เลือก ('+(S.pc==='ALL'?'ทุกหมวด':pcBy[S.pc].name)+')'+(m==='q'?' หน่วยนับ '+S.unit:'')+' · วันที่พอใช้ = คงเหลือ ÷ อัตราจ่ายต่อวัน · กดแถวเพื่อเลือกกลุ่ม';
-  let h='<table><thead><tr><th>กลุ่ม</th><th>รายการ (เคลื่อนไหว / ทั้งหมด)</th><th></th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>สัดส่วนคงเหลือ</th><th>วันที่พอใช้</th></tr></thead><tbody>';
-  gs.forEach(o=>{h+='<tr data-act="view" data-k="'+esc(o.g.code)+'"'+(S.view===o.g.code?' class="sel"':'')+'><td title="'+esc(o.g.name)+'">'+esc(o.g.name)+'</td><td>'+nf(o.na)+' <small class="hp-mut">/ '+nf(o.n)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(o.a)+'<td>'+(all.b?pct(o.a.b/all.b,1):'—')+'</td><td>'+fdosH(dos(o.a))+'</td></tr>';});
-  h+='<tr class="tot"><td>รวม</td><td>'+nf(nAct(base))+' <small class="hp-mut">/ '+nf(base.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(all)+'<td>100%</td><td>'+fdosH(dos(all))+'</td></tr></tbody></table>';
+  $('#gr-n').textContent=(m==='v'?'มูลค่า (บาท)':'ปริมาณหน่วย '+S.unit)+' · แยกกลุ่มยากับกลุ่มวัสดุ/เวชภัณฑ์มิใช่ยา เพราะเทียบกันตรง ๆ ไม่ได้ · กดเพื่อเลือกกลุ่ม';
+  const lim=S.grAll?1e9:12;
+  const sect=(t,L,tot)=>L.length?'<h3 class="hp-sh">'+t+' <span class="hp-mut">'+L.length+' กลุ่ม · คงเหลือรวม '+fmtM(tot.b)+' '+unitTxt()+'</span></h3>'+pairBars(L.slice(0,lim).map(o=>({label:o.g.short,b:o.a.b,d:o.a.d,attr:'data-act="view" data-k="'+esc(o.g.code)+'"',tip:o.g.name+'\nคงเหลือ '+fmtM(o.a.b)+'\nจ่าย '+fmtM(o.a.d)}))):'';
+  $('#gr-bars').innerHTML=(gsA.length?lgd([['คงเหลือ (แท่งหนา)',fcol('b')],['จ่ายในช่วง (แท่งบาง)',fcol('d')]]):'')+sect('กลุ่ม'+(S.mode==='sym'?'อาการ':'โรค')+' (ยา)',dr,agg(dr.reduce((a,o)=>a.concat(o.rs),[])))+sect('กลุ่มวัสดุ / เวชภัณฑ์มิใช่ยา',su,agg(su.reduce((a,o)=>a.concat(o.rs),[])))+((dr.length>12||su.length>12)?'<button class="hp-btn" data-act="grall">'+(S.grAll?'แสดงเฉพาะ 12 อันดับแรก':'แสดงทุกกลุ่ม')+'</button>':'')+(gsA.length?'':'<div class="hp-empty">ไม่มีข้อมูล</div>');
+  $('#gr-tn').textContent='หน่วย: '+unitTxt()+' · ตามหมวดที่เลือก ('+(S.pc==='ALL'?'ทุกหมวด':pcBy[S.pc].name)+') · วันที่พอใช้ = คงเหลือ ÷ อัตราจ่ายต่อวัน (แดง < 30 · เขียว 30–180 · เหลือง > 180 วัน) · กดแถวเพื่อเลือกกลุ่ม';
+  const row=o=>'<tr data-act="view" data-k="'+esc(o.g.code)+'"'+(S.view===o.g.code?' class="sel"':'')+'><td title="'+esc(o.g.name)+'">'+esc(o.g.name)+'</td><td>'+nf(o.na)+' <small class="hp-mut">/ '+nf(o.n)+'</small></td>'+flowCells(o.a)+'<td>'+(all.b?pct(o.a.b/all.b,1):'—')+'</td><td>'+fdosH(dos(o.a))+'</td></tr>';
+  const subT=(t,L)=>{const rs=L.reduce((a,o)=>a.concat(o.rs),[]),a=agg(rs);return '<tr class="sub"><td>'+t+'</td><td>'+nf(nAct(rs))+' <small class="hp-mut">/ '+nf(rs.length)+'</small></td>'+flowCells(a)+'<td>'+(all.b?pct(a.b/all.b,1):'—')+'</td><td>'+fdosH(dos(a))+'</td></tr>';};
+  let h='<table><thead><tr><th>กลุ่ม</th><th>รายการ (เคลื่อนไหว / ทั้งหมด)</th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>สัดส่วนคงเหลือ</th><th>วันที่พอใช้</th></tr></thead><tbody>';
+  if(dr.length)h+=subT('รวมกลุ่ม'+(S.mode==='sym'?'อาการ':'โรค')+' (ยา)',dr)+dr.map(row).join('');
+  if(su.length)h+=subT('รวมกลุ่มวัสดุ / เวชภัณฑ์มิใช่ยา',su)+su.map(row).join('');
+  h+='<tr class="tot"><td>รวมทั้งหมด</td><td>'+nf(nAct(base))+' <small class="hp-mut">/ '+nf(base.length)+'</small></td>'+flowCells(all)+'<td>100%</td><td>'+fdosH(dos(all))+'</td></tr></tbody></table>';
   $('#gr-tbl').innerHTML=h;
 }
 
@@ -361,7 +431,7 @@ function itemRows(){
 function isAct(x){const a=S.from-1,b=S.to-1;if(x.oq[a]||x.ov[a]||x.bq[b]||x.bv[b])return true;for(let i=a;i<=b;i++){if(x.rq[i]||x.dq[i]||x.rv[i]||x.dv[i])return true;}return false;}
 const nAct=rows=>rows.filter(isAct).length;
 const cntTxt=rows=>'มีสต็อก/เคลื่อนไหว '+nf(nAct(rows))+' จาก '+nf(rows.length)+' รายการ';
-let DQ={},DQU={};
+let DQ={},DQU={},PREV=null;
 const PIECE=['ชิ้น','คู่','อัน','เม็ด','แคปซูล','ซอง'];
 function dqCalc(){
   DQ={};DQU={};const a=S.from-1,b=S.to-1;
@@ -369,7 +439,7 @@ function dqCalc(){
   const g={},gu={};D.forEach(x=>{x._p=pr(x);if(x._p){(g[x.pcat+'|'+x.unit]=g[x.pcat+'|'+x.unit]||[]).push(x._p);(gu[x.unit]=gu[x.unit]||[]).push(x._p);}});
   D.forEach(x=>{
     const r=[];
-    if(x._p&&x._p>=200){const L=(g[x.pcat+'|'+x.unit]||[]).length>=5?g[x.pcat+'|'+x.unit]:gu[x.unit]||[];const m=d3.median(L);
+    if(x._p&&x._p>=200&&!/Adenosine|Filgrastim/i.test(x.label)){const L=(g[x.pcat+'|'+x.unit]||[]).length>=5?g[x.pcat+'|'+x.unit]:gu[x.unit]||[];const m=d3.median(L);
       if(L.length>=5&&m>0&&x._p>=30*m)r.push({k:'price',ratio:x._p/m,txt:'ราคาต่อหน่วย '+nf(x._p)+' บาท สูงกว่ารายการหน่วย "'+x.unit+'" ในหมวดเดียวกันราว '+nf(x._p/m)+' เท่า (มัธยฐาน '+nf1(m)+' บาท) หน่วยนับหรือปริมาณอาจบันทึกเป็นกล่อง/แพ็ก'});}
     if(/^box$/i.test(x.form||'')&&PIECE.indexOf(x.unit)>=0)DQU[x.id]=({k:'unit',ratio:0,txt:'ประเภท (TYPE) ในรายงานเป็น Box แต่หน่วยนับเป็น "'+x.unit+'" ปริมาณอาจนับเป็นกล่อง ทำให้ปริมาณและราคาต่อหน่วยคลาดเคลื่อน'});
     if(r.length)DQ[x.id]={reasons:r,ratio:Math.max.apply(null,r.map(z=>z.ratio)),price:x._p};
@@ -388,13 +458,14 @@ const ABCN={A:'A · มูลค่าจ่ายสูง (สะสม 80%)',
 function renderAbc(){
   const rows=filt({pc:1,view:1}),R=abcCalc(rows);
   const by={A:[],B:[],C:[],N:R.none};R.act.forEach(o=>by[o.cls].push(o));
-  const totB=sum(R.all.map(o=>o.bv)),totN=rows.length;
+  const totB=sum(R.all.map(o=>o.bv)),totN=nAct(rows);
+  const Nact=by.N.filter(o=>isAct(o.x)),Nempty=by.N.length-Nact.length;by.N=Nact;
   const risk=by.A.filter(o=>o.st.k==='out'||o.st.k==='low');
   const overCN=sum(by.C.concat(by.N).filter(o=>o.st.k==='over'||o.st.k==='idle').map(o=>o.bv));
   headline($('#ab-head'),risk.length?'bad':'info','<span class="hp-hl-t">ABC ตามมูลค่าจ่าย · '+esc(scopeName())+' · '+esc(rangeLabel())+'</span> กลุ่ม A มี <b>'+by.A.length+'</b> รายการ ('+(totN?pct(by.A.length/totN,0):'—')+' ของรายการทั้งหมด) แต่คิดเป็น 80% ของมูลค่าจ่าย'+(risk.length?' · <b class="up-bad">กลุ่ม A ที่หมด/ใกล้หมด '+risk.length+' รายการ</b>':' · กลุ่ม A ไม่มีรายการหมด/ใกล้หมด')+' · มูลค่าคงเหลือที่ล้นสต็อก/ไม่เคลื่อนไหวในกลุ่ม C และไม่มีการจ่าย <b>'+baht(overCN)+' บาท</b>');
   $('#ab-cards').innerHTML=['A','B','C','N'].map((k,i)=>{const L=by[k],dv=sum(L.map(o=>o.dv)),bv=sum(L.map(o=>o.bv)),a={b:bv,dk:sum(L.map(o=>o.v.dk)),dayk:L.length?L[0].v.dayk:30};
-    return '<button class="hp-gc" style="--i:'+i+';border-top:3px solid '+ABCC[k]()+'" data-act="abcf" data-k="'+k+'" data-tip="'+esc(ABCN[k]+'\nกดเพื่อดูรายการ')+'"><span class="t">'+esc(ABCN[k])+'</span><span class="v">'+nf(L.length)+' <small class="hp-mut">รายการ ('+(totN?pct(L.length/totN,0):'—')+')</small></span><span class="fl"><span>มูลค่าจ่าย</span><span>'+baht(dv)+' บาท'+(R.tot?' ('+pct(dv/R.tot,0)+')':'')+'</span><span>มูลค่าคงเหลือ</span><span>'+baht(bv)+' บาท'+(totB?' ('+pct(bv/totB,0)+')':'')+'</span><span>วันที่พอใช้ (มูลค่า)</span><span>'+(k==='N'?'—':fdos(dos(a)))+'</span></span></button>';}).join('');
-  $('#ab-pn').textContent='จัดชั้นตามมูลค่าที่จ่ายในช่วง '+rangeLabel()+' (ไม่ขึ้นกับตัวเลือกมูลค่า/ปริมาณ) · เรียงจากมูลค่าจ่ายมากไปน้อย แกนตั้ง = สัดส่วนสะสมของมูลค่าจ่าย · เส้นประ = 80% และ 95% · ควรเลือกช่วง 3–12 เดือนเพื่อให้การจัดชั้นนิ่ง (ตอนนี้ช่วงสั้นอาจจัดชั้นต่างไปเมื่อมีข้อมูลมากขึ้น)';
+    return '<button class="hp-gc" style="--i:'+i+';border-top:3px solid '+ABCC[k]()+'" data-act="abcf" data-k="'+k+'" data-tip="'+esc(ABCN[k]+'\nกดเพื่อดูรายการ')+'"><span class="t">'+esc(ABCN[k])+'</span><span class="v">'+nf(L.length)+' <small class="hp-mut">รายการ ('+(totN?pct(L.length/totN,0):'—')+' ของรายการที่เคลื่อนไหว)</small></span><span class="fl"><span>มูลค่าจ่าย</span><span>'+baht(dv)+' บาท'+(R.tot?' ('+pct(dv/R.tot,0)+')':'')+'</span><span>มูลค่าคงเหลือ</span><span>'+baht(bv)+' บาท'+(totB?' ('+pct(bv/totB,0)+')':'')+'</span><span>วันที่พอใช้ (มูลค่า)</span><span>'+(k==='N'?'—':fdos(dos(a)))+'</span></span>'+(k==='N'&&Nempty?'<span class="hp-mut" style="font-size:.72rem">ยังมีอีก '+nf(Nempty)+' รายการที่ว่างทั้งช่วง (ไม่นับ)</span>':'')+'</button>';}).join('');
+  $('#ab-pn').textContent='จัดชั้นตามมูลค่าที่จ่ายในช่วง '+rangeLabel()+' (ไม่ขึ้นกับตัวเลือกมูลค่า/ปริมาณ) · เรียงจากมูลค่าจ่ายมากไปน้อย แกนตั้ง = สัดส่วนสะสมของมูลค่าจ่าย · เส้นประ = 80% และ 95% · ความสูงแท่งใช้สเกลรากที่สอง (เพื่อให้เห็นรายการเล็ก) · ควรเลือกช่วง 3–12 เดือนเพื่อให้การจัดชั้นนิ่ง (ตอนนี้ช่วงสั้นอาจจัดชั้นต่างไปเมื่อมีข้อมูลมากขึ้น)';
   paretoChart($('#ab-par'),R.act);
   $('#ab-lg').innerHTML=['A','B','C'].map(k=>'<span style="--c:'+ABCC[k]()+'">'+k+'</span>').join('');
   $('#ab-seg').innerHTML=['A','B','C','N'].map(k=>'<button data-act="abcf" data-k="'+k+'" aria-pressed="'+(ABCF===k)+'">'+(k==='N'?'ไม่จ่าย':k)+' ('+by[k].length+')</button>').join('');
@@ -413,12 +484,12 @@ function paretoChart(host,act){
   [0,.25,.5,.75,1].forEach(t=>{s+='<line x1="'+lm+'" x2="'+(W-12)+'" y1="'+y(t)+'" y2="'+y(t)+'" style="stroke:var(--cds-chart-grid)"/><text class="hp-ax" x="'+(lm-6)+'" y="'+(y(t)+4)+'" text-anchor="end">'+Math.round(t*100)+'%</text>';});
   [.8,.95].forEach(t=>{s+='<line x1="'+lm+'" x2="'+(W-12)+'" y1="'+y(t)+'" y2="'+y(t)+'" style="stroke:var(--cds-chart-reference)" stroke-dasharray="5 4"/>';});
   const bw=Math.max(1.5,Math.min(14,(W-lm-12)/n*.7));
-  act.forEach((o,i)=>{const bh=Math.max(1,(H-28-12)*(o.dv/act[0].dv)*.35);s+='<rect x="'+(x(o.rank)-bw/2).toFixed(1)+'" y="'+(H-28-bh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" style="fill:'+ABCC[o.cls]()+';opacity:.5"/>';});
+  act.forEach((o,i)=>{const bh=Math.max(2,(H-28-12)*Math.sqrt(o.dv/act[0].dv)*.4);s+='<rect x="'+(x(o.rank)-bw/2).toFixed(1)+'" y="'+(H-28-bh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" style="fill:'+ABCC[o.cls]()+';opacity:.5"/>';});
   ['A','B','C'].forEach(k=>{const seg=act.filter(o=>o.cls===k);if(!seg.length)return;const pts=seg.map(o=>[x(o.rank),y(o.cum)]);const f=seg[0].rank>1?[[x(seg[0].rank-1),y(act[seg[0].rank-2].cum)]]:[[x(1),y(0)]];
     s+='<path class="hp-line" pathLength="1" d="'+d3.line()(f.concat(pts))+'" fill="none" style="stroke:'+ABCC[k]()+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';});
   const step=(W-lm-12)/Math.max(1,n-1);
   act.forEach(o=>{s+='<rect x="'+(x(o.rank)-step/2).toFixed(1)+'" y="0" width="'+step.toFixed(1)+'" height="'+(H-24)+'" fill="transparent" data-tip="'+esc('อันดับ '+o.rank+' · '+o.x.label+'\nชั้น '+o.cls+' · มูลค่าจ่าย '+nf(o.dv)+' บาท\nสะสม '+pct(o.cum,1))+'"/>';});
-  s+='<text class="hp-ax" x="'+((lm+W-12)/2)+'" y="'+(H-6)+'" text-anchor="middle">อันดับรายการ (1 = จ่ายเป็นมูลค่าสูงสุด) · แท่ง = มูลค่าจ่ายของรายการ (สเกลสัมพัทธ์)</text></svg>';
+  s+='<text class="hp-ax" x="'+((lm+W-12)/2)+'" y="'+(H-6)+'" text-anchor="middle">อันดับรายการ (1 = จ่ายเป็นมูลค่าสูงสุด) · แท่ง = มูลค่าจ่ายของรายการ (สเกลรากที่สอง)</text></svg>';
   host.innerHTML=s;
 }
 function renderItems(){
@@ -429,11 +500,11 @@ function renderItems(){
   $('#dr-h').textContent='รายการทั้งหมด · '+scopeName();
   $('#dr-n').textContent=rangeLabel()+' · แต่ละช่องบนคือปริมาณ (หน่วยของรายการ) ล่างคือมูลค่า (บาท) · กดแถวเพื่อดูรายเดือน';
   const th=(k,t)=>'<th><button data-act="sort" data-k="'+k+'">'+t+(S.sort.k===k?(S.sort.d<0?' ▼':' ▲'):'')+'</button></th>';
-  let h='<table><thead><tr>'+th('label','ชื่อ / ความแรง')+th('pcat','หมวด')+th('cat','กลุ่ม')+th('unit','หน่วย')+'<th>ABC</th>'+th('oq','ยกมา')+th('rq','รับ')+th('dq','จ่าย')+th('bq','คงเหลือ')+th('dos','วันที่พอใช้')+th('st','สถานะ')+'</tr></thead><tbody>';
+  let h='<table><thead><tr>'+th('label','ชื่อ / ความแรง')+th('pcat','หมวด')+th('cat','กลุ่ม')+th('unit','หน่วย')+'<th>ABC</th>'+th('oq','ยกมา')+th('rq','รับ')+th('dq','จ่าย')+th('bq','คงเหลือ')+th('dos','วันที่พอใช้')+th('st','สถานะ')+(AV>=2?'<th>แนวโน้มคงเหลือ</th>':'')+'</tr></thead><tbody>';
   list.slice(0,S.limit).forEach(o=>{
     const x=o.x,pcn=pcBy[x.pcat];
     h+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+dqBadge(x)+'<small>'+esc(x.code)+'</small></td><td>'+esc(pcn?pcn.short:'')+'</td><td>'+esc(gshort(x))+'</td><td class="u">'+esc(x.unit)+'</td><td>'+(abcm[x.id]?'<span class="hp-badge" style="color:'+ABCC[abcm[x.id].cls]()+'">'+(abcm[x.id].cls==='N'?'-':abcm[x.id].cls)+'</span>':'')+'</td>'+
-      ['o','r','d','b'].map(f=>'<td>'+nf(o[f+'q'])+'<small>'+nf(o[f+'v'])+'</small></td>').join('')+'<td>'+fdosH(o.st.dos)+'</td><td><span class="hp-badge '+o.st.c+'">'+o.st.t+'</span></td></tr>';
+      ['o','r','d','b'].map(f=>'<td>'+nf(o[f+'q'])+'<small>'+nf(o[f+'v'])+'</small></td>').join('')+'<td>'+fdosH(o.st.dos)+'</td><td><span class="hp-badge '+o.st.c+'">'+o.st.t+'</span></td>'+(AV>=2?'<td>'+spark(x)+'</td>':'')+'</tr>';
   });
   h+='</tbody></table>';
   $('#dr-tbl').innerHTML=list.length?h:'<div class="hp-empty">ไม่พบรายการ</div>';
@@ -557,6 +628,8 @@ document.addEventListener('click',e=>{
   else if(a==='sort'){const k=el.dataset.k;S.sort=S.sort.k===k?{k:k,d:-S.sort.d}:{k:k,d:(k==='label'||k==='pcat'||k==='cat'||k==='unit'||k==='st')?1:-1};}
   else if(a==='more'){S.limit+=120;}
   else if(a==='replay'){}
+  else if(a==='excl'){S.excl=!S.excl;S.limit=80;}
+  else if(a==='grall'){S.grAll=!S.grAll;}
   else if(a==='abcf'){ABCF=el.dataset.k;S.tab='abc';}
   else if(a==='togactive'){S.active=!S.active;}
   anim=(a==='tab'||a==='fy'||a==='replay')?'tab':'data';go();

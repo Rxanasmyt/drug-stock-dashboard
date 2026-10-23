@@ -453,6 +453,52 @@
 @keyframes hpRing{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--color-bad) 50%,transparent)}100%{box-shadow:0 0 0 16px transparent}}
 @media (prefers-reduced-motion:reduce){.hp-dr,.hp-do{opacity:.9}}
 @media print{.hp-tank{display:none}}
+
+/* ---- v3: clarity, alignment, new charts ---- */
+#ov-pc th,#ov-pc td,#gr-tbl th,#gr-tbl td{text-align:right}
+#ov-pc th:nth-child(-n+2),#ov-pc td:nth-child(-n+2),#gr-tbl th:nth-child(-n+2),#gr-tbl td:nth-child(-n+2){text-align:left}
+#ct-tbl th,#ct-tbl td{text-align:right}#ct-tbl th:nth-child(-n+2),#ct-tbl td:nth-child(-n+2){text-align:left}
+#dr-tbl th,#dr-tbl td,#ab-tbl th,#ab-tbl td{text-align:right}
+#dr-tbl th:nth-child(-n+5),#dr-tbl td:nth-child(-n+5){text-align:left}
+#ab-tbl th:nth-child(-n+4),#ab-tbl td:nth-child(-n+4){text-align:left}
+#dr-tbl td:last-child,#ab-tbl td:last-child{text-align:left}
+.hp-tw .sub td{font-weight:600;background:color-mix(in srgb,var(--color-fg) 4%,transparent)}
+.hp-wm{display:inline-flex;align-items:center;justify-content:center;width:1.1em;height:1.1em;border-radius:50%;background:var(--color-warn);color:#fff;font-size:.72em;line-height:1;vertical-align:1px}
+.hp-sh{margin:14px 0 4px;font-size:.92rem;font-weight:700}.hp-sh:first-of-type{margin-top:6px}
+.hp-pb{display:grid;grid-template-columns:minmax(5.5rem,30%) 1fr 6.4rem;gap:10px;align-items:center;width:100%;padding:6px 6px;border:0;background:transparent;border-radius:8px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.hp-pb:hover,.hp-pb:focus-visible{background:color-mix(in srgb,var(--hp-a) 9%,transparent)}
+.hp-pb-t{display:grid;gap:3px;min-width:0}
+.hp-pb-t i{display:block;height:9px;border-radius:5px;min-width:2px;transform-origin:left center}
+.hp-pb-t i.d{height:6px;opacity:.9}
+.hp-pb-v{text-align:right;font-variant-numeric:tabular-nums;line-height:1.25}
+.hp-pb-v b{display:block;font-size:.88rem}.hp-pb-v small{color:var(--color-fg-muted);font-size:.72rem}
+#ab-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15.5rem),1fr));gap:var(--cds-gap-sm)}
+.hp-tml{font:600 12px var(--hp-font);fill:#fff;paint-order:stroke;stroke:rgba(0,0,0,.28);stroke-width:2px;pointer-events:none}
+.hp-tmv{font:12px var(--hp-font);fill:#fff;pointer-events:none}
+.hp-tmg rect{transition:opacity .15s,filter .15s}.hp-tmg:hover rect{opacity:1!important;filter:brightness(1.08)}
+.hp-rib{opacity:.42;transition:opacity .15s}.hp-rib:hover{opacity:.78}
+.hp-halo{paint-order:stroke;stroke:var(--color-panel);stroke-width:3px}
+.hp-hmw{overflow-x:auto}
+.hp-hm{display:grid;grid-template-columns:7.5rem repeat(var(--n),minmax(3rem,1fr));gap:4px;min-width:36rem;align-items:center}
+.hp-hmh{font-size:.72rem;text-align:center;color:var(--color-fg)}.hp-hmh.off{color:var(--color-fg-muted);opacity:.5}
+.hp-hml{font-size:.8rem;font-weight:600;padding-right:6px}
+.hp-hmc{display:flex;align-items:center;justify-content:center;height:38px;border-radius:8px;font-size:.74rem;font-variant-numeric:tabular-nums;background:color-mix(in srgb,var(--hp-b) calc(var(--a,0)*100%),color-mix(in srgb,var(--color-fg) 5%,transparent));color:var(--color-fg)}
+.hp-hmc.off{background:transparent;border:1px dashed var(--color-border-line);color:var(--color-fg-muted);opacity:.5}
+.hp-sp{display:block}
+.hp-dosb{width:96px;height:8px;border-radius:4px}.hp-dosb i{top:-4px;width:4px;height:16px;margin-left:-2px;border-radius:2px}
+.hp-tcap{font-size:.72rem}
+.hp-flash{animation:hpFlash .9s ease-out}
+@keyframes hpFlash{0%{background:color-mix(in srgb,var(--hp-a) 40%,transparent);border-radius:6px}100%{background:transparent}}
+@media (prefers-reduced-motion:no-preference){
+.hp.go .hp-pb-t i{animation:hpW .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*45ms)}
+.hp.go .hp-rib{animation:hpFade 1s .3s both}
+.hp.go .hp-hmc{animation:hpFade .6s both;animation-delay:calc(var(--i,0)*18ms)}
+.hp.go .hp-tmg{animation:hpPop .6s cubic-bezier(.3,1.3,.5,1) both;animation-delay:calc(var(--i,0)*45ms);transform-box:fill-box;transform-origin:center}
+}
+@media(max-width:560px){.hp-pb{grid-template-columns:minmax(4.5rem,34%) 1fr 5.4rem}}
+
+.hp-filters #hp-excl{border-color:var(--color-border-line);color:var(--color-fg)}
+.hp-filters #hp-excl[aria-pressed=true]{background:color-mix(in srgb,var(--color-warn) 18%,transparent);border-color:var(--color-warn)}
 </style>
 <div id="hp" class="hp">
   <header class="hp-hero">
@@ -499,6 +545,7 @@
     <div class="hp-fg"><label>มุมมองการจัดกลุ่ม</label><div class="hp-seg hp-mode" id="hp-mode"><button data-act="mode" data-m="dis">ตามกลุ่มโรค / คลินิก</button><button data-act="mode" data-m="sym">ตามอาการ / ข้อบ่งใช้</button></div></div>
     <div class="hp-fg"><label id="hp-la">กลุ่มโรค</label><div class="hp-chips" id="hp-chips-a"></div></div>
     <div class="hp-fg"><label>กลุ่มวัสดุ / เวชภัณฑ์มิใช่ยา</label><div class="hp-chips" id="hp-chips-s"></div></div>
+    <div class="hp-fg"><label>ความถูกต้องข้อมูล</label><div class="hp-chips"><button class="hp-chip" id="hp-excl" data-act="excl" aria-pressed="false" title="ตัดรายการที่ราคาต่อหน่วยผิดปกติ (ติดป้ายตรวจข้อมูล) ออกจากตัวเลขทั้งหมด ตัวเลขจะไม่ตรงกับรายงานต้นฉบับ">ไม่นับรายการราคาน่าสงสัย (<span id="hp-excl-n">0</span>)</button></div></div>
     <div class="hp-ctx" id="hp-ctx"></div>
   </div>
 
@@ -523,13 +570,16 @@
   <section class="hp-sec" id="hp-cats" hidden>
     <div id="ct-head"></div>
     <div class="hp-grid" id="ct-cards"></div>
+    <div class="hp-card"><h2>แผนภาพการไหลของมูลค่า (Sankey)</h2><p class="hp-note">ความกว้างแถบ = มูลค่า (บาท) · ซ้าย: ยกมา และรับ → กลาง: หมวดสินค้า → ขวา: จ่าย และคงเหลือ · กดหมวดเพื่อกรอง</p><div id="ct-sk" class="hp-svg" style="min-height:300px"></div></div>
+    <div class="hp-card"><h2>จ่ายรายเดือนแยกตามหมวด (Heatmap)</h2><p class="hp-note">มูลค่าจ่ายต่อเดือน (บาท) · ยิ่งเข้ม ยิ่งจ่ายมาก · ช่อง "·" = เดือนที่ยังไม่มีข้อมูล</p><div id="ct-hm" class="hp-hmw"></div></div>
     <div class="hp-card"><h2>หมวดสินค้า × หน่วยนับ: ปริมาณและมูลค่า</h2><p class="hp-note" id="ct-n"></p><div class="hp-tw st" id="ct-tbl"></div></div>
   </section>
 
   <section class="hp-sec" id="hp-groups" hidden>
     <div id="gr-head"></div>
+    <div class="hp-card"><h2>แผนที่สต็อก (Treemap)</h2><p class="hp-note" id="gr-tm-n"></p><div id="gr-tm" class="hp-svg" style="min-height:300px"></div></div>
     <div class="hp-card"><h2 id="gr-bars-h">เทียบกลุ่มโรค</h2><p class="hp-note" id="gr-n"></p><div id="gr-bars"></div></div>
-    <div class="hp-card"><h2>ตารางกลุ่มโรค: ยกมา รับ จ่าย คงเหลือ</h2><p class="hp-note" id="gr-tn"></p><div class="hp-tw st" id="gr-tbl"></div></div>
+    <div class="hp-card"><h2>ตารางกลุ่ม: ยกมา รับ จ่าย คงเหลือ</h2><p class="hp-note" id="gr-tn"></p><div class="hp-tw st" id="gr-tbl"></div></div>
   </section>
 
   <section class="hp-sec" id="hp-abc" hidden>
