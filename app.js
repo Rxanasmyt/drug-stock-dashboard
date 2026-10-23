@@ -89,6 +89,7 @@ function mser(rows,m){
 }
 const dos=a=>a.dk>0?a.b/(a.dk/a.dayk):(a.b>0?Infinity:null);
 const turn=a=>{const av=(a.o+a.b)/2;return av>0?a.d/av*365/days():null;};
+const fdosH=v=>{const t=fdos(v);if(v==null||!isFinite(v))return t;const p=Math.min(1,v/240)*100;return '<span class="hp-dosw">'+t+'<span class="hp-dosb" title="แถบเทียบ: แดง < 30 วัน · เขียว 30–180 วัน · เหลือง > 180 วัน"><i style="left:'+p.toFixed(1)+'%"></i></span></span>';};
 const fdos=v=>v==null?'—':!isFinite(v)?'ไม่มีการจ่าย':v>=1000?'> 999 วัน':nf(v)+' วัน';
 function filt(o){
   return D.filter(x=>(!o.pc||S.pc==='ALL'||x.pcat===S.pc)&&(!o.view||S.view==='ALL'||gk(x)===S.view)&&(!o.unit||S.m!=='q'||!S.unit||x.unit===S.unit));
@@ -119,7 +120,7 @@ function countUps(){
     let from=PREVK[key];PREVK[key]=to;
     if(!animNow||reduced())return;
     if(animNow==='tab'||from==null)from=0;
-    tween(el,from,to,fmt,animNow==='tab'?1000:700);
+    tween(el,from,to,fmt,animNow==='tab'?600:400);
   });
 }
 function headline(host,tone,html){host.className='hp-headline '+tone;host.innerHTML='<i></i><div>'+html+'</div>';}
@@ -198,7 +199,9 @@ function flowChart(host,a,m){
       '<text class="hp-ax" x="'+(Math.max(x0,x1)+6).toFixed(1)+'" y="'+(y+bh/2+4)+'" style="fill:var(--color-fg);font-weight:600">'+fmtM(st.v,m)+'</text></g>';
     if(i===1||i===2){const nx=x(i===1?a.o+a.r:a.o+a.r-a.d);s+='<line x1="'+nx.toFixed(1)+'" x2="'+nx.toFixed(1)+'" y1="'+(y+bh)+'" y2="'+(y+RH)+'" style="stroke:var(--cds-chart-axis)" stroke-dasharray="2 3"/>';}
   });
-  host.innerHTML=s+'</svg>';
+  const dl=a.b-a.o,pc2=a.o>0?Math.abs(dl)/a.o:null,un=m==='q'?' '+(S.unit||''):' บาท';
+  const sum2=a.o+a.r+a.d+a.b===0?'ไม่มีความเคลื่อนไหวในช่วงนี้':'ช่วงนี้ <b style="color:'+fcol('r')+'">รับ '+fmtM(a.r,m)+'</b> · <b style="color:'+fcol('d')+'">จ่าย '+fmtM(a.d,m)+'</b>'+un+' → '+(a.r>a.d?'รับมากกว่าจ่าย ':a.r<a.d?'จ่ายมากกว่ารับ ':'รับเท่ากับจ่าย ')+'คงเหลือ<b>'+(dl>0?'เพิ่มขึ้น ▲ ':dl<0?'ลดลง ▼ ':'เท่าเดิม ')+(dl?fmtM(Math.abs(dl),m)+un:'')+(pc2!=null&&dl?' ('+pct(pc2,0)+' ของยอดยกมา)':'')+'</b>';
+  host.innerHTML='<p class="hp-sum2">'+sum2+'</p>'+s+'</svg>';
 }
 function trendChart(host,ser,m){
   const n=ser.length,W=Math.max(300,host.clientWidth||600),H=270;
@@ -215,13 +218,14 @@ function trendChart(host,ser,m){
     ['r','d'].forEach((k,j)=>{
       const bx=x(i)+ib(k),bh=Math.max(0,y(0)-y(d[k]));
       s+='<rect class="hp-bar" data-i="'+i+'" style="--i:'+(i*2+j)+';fill:'+fcol(k)+';opacity:'+(inr?1:.3)+'" x="'+bx.toFixed(1)+'" y="'+y(d[k]).toFixed(1)+'" width="'+ib.bandwidth().toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="4"/>';
-      if(d[k]>0)s+='<text class="hp-ax" x="'+(bx+ib.bandwidth()/2).toFixed(1)+'" y="'+(y(d[k])-5).toFixed(1)+'" text-anchor="middle">'+(m==='v'?bahtS(d[k]):nf(d[k]))+'</text>';
+      if(d[k]>0&&n<=3)s+='<text class="hp-ax" x="'+(bx+ib.bandwidth()/2).toFixed(1)+'" y="'+(y(d[k])-5).toFixed(1)+'" text-anchor="middle">'+(m==='v'?bahtS(d[k]):nf(d[k]))+'</text>';
     });
     s+='<text class="hp-ax" x="'+(x(i)+x.bandwidth()/2).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(MON[i].short)+'</text>';
   });
   const pts=ser.map((d,i)=>[x(i)+x.bandwidth()/2,y(d.b)]);
   if(n>1)s+='<path class="hp-line" pathLength="1" d="'+d3.line()(pts)+'" fill="none" style="stroke:'+fcol('b')+'" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
-  pts.forEach((p,i)=>{s+='<circle class="hp-dot" style="--i:'+i+';fill:'+fcol('b')+'" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="4"/><text class="hp-ax" x="'+p[0].toFixed(1)+'" y="'+(p[1]-9).toFixed(1)+'" text-anchor="middle" style="fill:var(--color-fg);font-weight:600">'+(m==='v'?bahtS(ser[i].b):nf(ser[i].b))+'</text>';});
+  const mxI=ser.reduce((m2,d,i)=>d.b>ser[m2].b?i:m2,0);
+  pts.forEach((p,i)=>{const lab=n<=4||i===0||i===n-1||i===mxI;s+='<circle class="hp-dot" style="--i:'+i+';fill:'+fcol('b')+'" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="4"/>'+(lab?'<text class="hp-ax" x="'+p[0].toFixed(1)+'" y="'+(p[1]-9).toFixed(1)+'" text-anchor="middle" style="fill:var(--color-fg);font-weight:600">'+(m==='v'?bahtS(ser[i].b):nf(ser[i].b))+'</text>':'');});
   const step=x.step();
   ser.forEach((d,i)=>{
     const tip=[MON[i].full+' '+MON[i].year,'ยกมา: '+fmtM(d.o,m),'รับ: '+fmtM(d.r,m),'จ่าย: '+fmtM(d.d,m),'คงเหลือ: '+fmtM(d.b,m)].join('\n');
@@ -240,9 +244,9 @@ function pcTable(host){
   const tot=agg(rows);
   PC.forEach(p=>{
     const rs=rows.filter(x=>x.pcat===p.code),a=agg(rs);
-    h+='<tr data-act="pc" data-k="'+esc(p.code)+'"'+(S.pc===p.code?' class="sel"':'')+'><td title="'+esc(p.name)+'">'+esc(p.name)+'</td><td>'+nf(nAct(rs))+' <small class="hp-mut">/ '+nf(rs.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(a)+'<td>'+(tot.b?pct(a.b/tot.b,1):'—')+'</td><td>'+fdos(dos(a))+'</td></tr>';
+    h+='<tr data-act="pc" data-k="'+esc(p.code)+'"'+(S.pc===p.code?' class="sel"':'')+'><td title="'+esc(p.name)+'">'+esc(p.name)+'</td><td>'+nf(nAct(rs))+' <small class="hp-mut">/ '+nf(rs.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(a)+'<td>'+(tot.b?pct(a.b/tot.b,1):'—')+'</td><td>'+fdosH(dos(a))+'</td></tr>';
   });
-  h+='<tr class="tot"><td>รวม</td><td>'+nf(nAct(rows))+' <small class="hp-mut">/ '+nf(rows.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(tot)+'<td>100%</td><td>'+fdos(dos(tot))+'</td></tr></tbody></table>';
+  h+='<tr class="tot"><td>รวม</td><td>'+nf(nAct(rows))+' <small class="hp-mut">/ '+nf(rows.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(tot)+'<td>100%</td><td>'+fdosH(dos(tot))+'</td></tr></tbody></table>';
   host.innerHTML=h;
 }
 
@@ -322,8 +326,8 @@ function renderGroups(){
   host.innerHTML=gs.length?gs.map((o,i)=>'<div style="display:grid;gap:2px;margin-bottom:6px"><button class="hp-hb" data-act="view" data-k="'+esc(o.g.code)+'" data-tip="'+esc(o.g.name+'\nคงเหลือ '+fmtM(o.a.b)+'\nจ่าย '+fmtM(o.a.d))+'"><span class="hp-hb-l">'+esc(o.g.short)+'</span><span class="hp-hb-t"><i style="--i:'+i+';width:'+Math.max(1,o.a.b/mx*100).toFixed(1)+'%;background:'+fcol('b')+'"></i></span><span class="hp-hb-v">'+fmtM(o.a.b)+'</span></button><button class="hp-hb" data-act="view" data-k="'+esc(o.g.code)+'"><span class="hp-hb-l hp-mut">จ่าย</span><span class="hp-hb-t"><i style="--i:'+i+';width:'+Math.max(1,o.a.d/mx*100).toFixed(1)+'%;background:'+fcol('d')+'"></i></span><span class="hp-hb-v hp-mut">'+fmtM(o.a.d)+'</span></button></div>').join(''):'<div class="hp-empty">ไม่มีข้อมูล</div>';
   $('#gr-tn').textContent='ตามหมวดที่เลือก ('+(S.pc==='ALL'?'ทุกหมวด':pcBy[S.pc].name)+')'+(m==='q'?' หน่วยนับ '+S.unit:'')+' · วันที่พอใช้ = คงเหลือ ÷ อัตราจ่ายต่อวัน · กดแถวเพื่อเลือกกลุ่ม';
   let h='<table><thead><tr><th>กลุ่ม</th><th>รายการ (เคลื่อนไหว / ทั้งหมด)</th><th></th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>สัดส่วนคงเหลือ</th><th>วันที่พอใช้</th></tr></thead><tbody>';
-  gs.forEach(o=>{h+='<tr data-act="view" data-k="'+esc(o.g.code)+'"'+(S.view===o.g.code?' class="sel"':'')+'><td title="'+esc(o.g.name)+'">'+esc(o.g.name)+'</td><td>'+nf(o.na)+' <small class="hp-mut">/ '+nf(o.n)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(o.a)+'<td>'+(all.b?pct(o.a.b/all.b,1):'—')+'</td><td>'+fdos(dos(o.a))+'</td></tr>';});
-  h+='<tr class="tot"><td>รวม</td><td>'+nf(nAct(base))+' <small class="hp-mut">/ '+nf(base.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(all)+'<td>100%</td><td>'+fdos(dos(all))+'</td></tr></tbody></table>';
+  gs.forEach(o=>{h+='<tr data-act="view" data-k="'+esc(o.g.code)+'"'+(S.view===o.g.code?' class="sel"':'')+'><td title="'+esc(o.g.name)+'">'+esc(o.g.name)+'</td><td>'+nf(o.na)+' <small class="hp-mut">/ '+nf(o.n)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(o.a)+'<td>'+(all.b?pct(o.a.b/all.b,1):'—')+'</td><td>'+fdosH(dos(o.a))+'</td></tr>';});
+  h+='<tr class="tot"><td>รวม</td><td>'+nf(nAct(base))+' <small class="hp-mut">/ '+nf(base.length)+'</small></td><td class="u">'+unitTxt()+'</td>'+flowCells(all)+'<td>100%</td><td>'+fdosH(dos(all))+'</td></tr></tbody></table>';
   $('#gr-tbl').innerHTML=h;
 }
 
@@ -382,7 +386,7 @@ function renderAbc(){
   $('#ab-th').textContent='รายการชั้น '+(ABCF==='N'?'ไม่มีการจ่าย':ABCF)+' ('+nf(L.length)+')';
   $('#ab-tn').textContent=(ABCF==='A'?'รายการที่ควรดูแลใกล้ชิดที่สุด: ตรวจจุดสั่งซื้อและไม่ให้ขาด':ABCF==='C'?'รายการมูลค่าจ่ายต่ำ ลดความถี่ตรวจนับ/สั่งซื้อได้ แต่ระวังล้นสต็อก':ABCF==='N'?'มีรายการในรายงานแต่ไม่จ่ายเลย เรียงตามมูลค่าคงเหลือ':'')+' · กดแถวเพื่อดูรายเดือน · แสดงสูงสุด 100 รายการ';
   let h='<table><thead><tr><th>ชื่อ / ความแรง</th><th>หมวด</th><th>อันดับ</th><th>หน่วย</th><th>จ่าย</th><th>% สะสม</th><th>คงเหลือ</th><th>วันที่พอใช้</th><th>สถานะ</th></tr></thead><tbody>';
-  L.slice(0,100).forEach(o=>{const x=o.x;h+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+dqBadge(x)+'<small>'+esc(x.code)+'</small></td><td>'+esc(pcBy[x.pcat]?pcBy[x.pcat].short:'')+'</td><td>'+(o.rank?nf(o.rank):'—')+'</td><td class="u">'+esc(x.unit)+'</td><td>'+nf(o.q.d)+'<small>'+nf(o.dv)+' บาท</small></td><td>'+(o.cum==null?'—':pct(o.cum,1))+'</td><td>'+nf(o.q.b)+'<small>'+nf(o.bv)+' บาท</small></td><td>'+fdos(o.st.dos)+'</td><td><span class="hp-badge '+o.st.c+'">'+o.st.t+'</span></td></tr>';});
+  L.slice(0,100).forEach(o=>{const x=o.x;h+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+dqBadge(x)+'<small>'+esc(x.code)+'</small></td><td>'+esc(pcBy[x.pcat]?pcBy[x.pcat].short:'')+'</td><td>'+(o.rank?nf(o.rank):'—')+'</td><td class="u">'+esc(x.unit)+'</td><td>'+nf(o.q.d)+'<small>'+nf(o.dv)+' บาท</small></td><td>'+(o.cum==null?'—':pct(o.cum,1))+'</td><td>'+nf(o.q.b)+'<small>'+nf(o.bv)+' บาท</small></td><td>'+fdosH(o.st.dos)+'</td><td><span class="hp-badge '+o.st.c+'">'+o.st.t+'</span></td></tr>';});
   $('#ab-tbl').innerHTML=L.length?h+'</tbody></table>':'<div class="hp-empty">ไม่มีรายการ</div>';
 }
 function paretoChart(host,act){
@@ -413,7 +417,7 @@ function renderItems(){
   list.slice(0,S.limit).forEach(o=>{
     const x=o.x,pcn=pcBy[x.pcat];
     h+='<tr data-act="detail" data-id="'+x.id+'"><td class="nm">'+esc(x.label)+dqBadge(x)+'<small>'+esc(x.code)+'</small></td><td>'+esc(pcn?pcn.short:'')+'</td><td>'+esc(gshort(x))+'</td><td class="u">'+esc(x.unit)+'</td><td>'+(abcm[x.id]?'<span class="hp-badge" style="color:'+ABCC[abcm[x.id].cls]()+'">'+(abcm[x.id].cls==='N'?'-':abcm[x.id].cls)+'</span>':'')+'</td>'+
-      ['o','r','d','b'].map(f=>'<td>'+nf(o[f+'q'])+'<small>'+nf(o[f+'v'])+'</small></td>').join('')+'<td>'+fdos(o.st.dos)+'</td><td><span class="hp-badge '+o.st.c+'">'+o.st.t+'</span></td></tr>';
+      ['o','r','d','b'].map(f=>'<td>'+nf(o[f+'q'])+'<small>'+nf(o[f+'v'])+'</small></td>').join('')+'<td>'+fdosH(o.st.dos)+'</td><td><span class="hp-badge '+o.st.c+'">'+o.st.t+'</span></td></tr>';
   });
   h+='</tbody></table>';
   $('#dr-tbl').innerHTML=list.length?h:'<div class="hp-empty">ไม่พบรายการ</div>';
