@@ -724,11 +724,44 @@ function render(){
   else if(S.tab==='items')renderItems();
   else if(S.tab==='alerts')renderAlerts();
   else if(S.tab==='order')renderOrder();
-  countUps();liqGo();critMark();tabInd();
+  countUps();liqGo();critMark();tabInd();fxPass();
 }
 function redraw(){go();
   if(S.tab==='overview')renderOverview();else if(S.tab==='cats')renderCats();else if(S.tab==='groups')renderGroups();else if(S.tab==='abc')renderAbc();else if(S.tab==='items')renderItems();else if(S.tab==='order')renderOrder();else if(S.tab==='alerts')renderAlerts();
-  countUps();liqGo();critMark();tabInd();}
+  countUps();liqGo();critMark();tabInd();fxPass();}
+
+/* ---- fx: ลูกเล่น animation เพิ่มเติม (ปิดอัตโนมัติเมื่อผู้ใช้ตั้งลดการเคลื่อนไหว) ---- */
+let fxIO=null,fxInit=false;
+function fxOnce(){
+  if(fxInit||reduced())return;fxInit=true;
+  const root=$('#hp');if(!root)return;
+  const bar=document.createElement('div');bar.className='fx-prog';bar.setAttribute('aria-hidden','true');root.prepend(bar);
+  const upd=()=>{const h=document.documentElement,m=h.scrollHeight-h.clientHeight;bar.style.transform='scaleX('+(m>0?Math.min(1,(window.scrollY||h.scrollTop)/m):0)+')';};
+  window.addEventListener('scroll',upd,{passive:true});upd();
+  const hero=$('.hp-hero',root);
+  if(hero){const w=document.createElement('div');w.className='fx-pills';w.setAttribute('aria-hidden','true');
+    for(let i=0;i<7;i++){const e=document.createElement('i');e.style.cssText='--x:'+(8+i*13)+'%;--s:'+(0.7+((i*37)%5)/10)+';--d:'+(9+(i*5)%7)+'s;--dl:'+(-i*1.7)+'s;--c:'+(['a','b','c'][i%3]);w.appendChild(e);}
+    hero.prepend(w);}
+  if(window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches){
+    root.addEventListener('pointermove',e=>{
+      const t=e.target.closest&&e.target.closest('.hp-kpi,.hp-card');if(!t)return;
+      const r=t.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+      t.style.setProperty('--mx',x+'px');t.style.setProperty('--my',y+'px');
+      if(t.classList.contains('hp-kpi')){t.style.setProperty('--ry',((x/r.width-.5)*8).toFixed(2)+'deg');t.style.setProperty('--rx',((.5-y/r.height)*6).toFixed(2)+'deg');}
+    },{passive:true});
+    root.addEventListener('pointerout',e=>{const t=e.target.closest&&e.target.closest('.hp-kpi');if(t&&!t.contains(e.relatedTarget)){t.style.setProperty('--ry','0deg');t.style.setProperty('--rx','0deg');}},{passive:true});
+  }
+}
+function fxPass(){
+  if(reduced())return;fxOnce();
+  $$('#hp .hp-rib').forEach((e,i)=>e.style.setProperty('--ri',i));
+  $$('#hp table tbody tr').forEach((e,i)=>{if(i<40)e.style.setProperty('--ti',i);});
+  if(!('IntersectionObserver' in window))return;
+  if(fxIO)fxIO.disconnect();
+  fxIO=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.remove('rv0');en.target.classList.add('rvin');fxIO.unobserve(en.target);}}),{rootMargin:'0px 0px -8% 0px'});
+  const vh=window.innerHeight||800;
+  $$('#hp .hp-card').forEach(c=>{c.classList.remove('rv0','rvin');if(c.getBoundingClientRect().top>vh*0.95){c.classList.add('rv0');fxIO.observe(c);}});
+}
 let lastW=window.innerWidth,rzT=null;
 window.addEventListener('resize',()=>{tabInd();clearTimeout(rzT);rzT=setTimeout(()=>{if(!ready||window.innerWidth===lastW)return;lastW=window.innerWidth;anim=null;redraw();},180);});
 window.addEventListener('orientationchange',()=>{setTimeout(()=>{lastW=-1;window.dispatchEvent(new Event('resize'));},250);});

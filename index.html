@@ -507,6 +507,32 @@
 #od-tbl th,#od-tbl td{text-align:right}#od-tbl th:nth-child(-n+3),#od-tbl td:nth-child(-n+3){text-align:left}
 .hp-foot summary{cursor:pointer;font-weight:700;color:var(--color-fg)}
 @media print{#hp-order .hp-odctl{display:none!important}.hp-foot details{display:block}}
+
+/* ---- fx v5 ---- */
+#hp .fx-prog{position:fixed;left:0;top:0;height:3px;width:100%;transform:scaleX(0);transform-origin:0 50%;background:linear-gradient(90deg,var(--hp-a),var(--hp-b),var(--hp-c));z-index:50;pointer-events:none}
+.fx-pills{position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:inherit}
+.fx-pills i{position:absolute;left:var(--x);bottom:-30px;width:calc(26px*var(--s));height:calc(11px*var(--s));border-radius:99px;opacity:0;background:linear-gradient(90deg,color-mix(in srgb,var(--hp-a) 65%,transparent) 50%,color-mix(in srgb,var(--hp-b) 55%,transparent) 50%);box-shadow:inset 0 1px 2px color-mix(in srgb,#fff 45%,transparent)}
+.fx-pills i:nth-child(3n+2){background:linear-gradient(90deg,color-mix(in srgb,var(--hp-c) 60%,transparent) 50%,color-mix(in srgb,var(--hp-a) 40%,transparent) 50%)}
+@media (prefers-reduced-motion:no-preference){
+.fx-pills i{animation:fxRise var(--d) linear infinite;animation-delay:var(--dl)}
+@keyframes fxRise{0%{transform:translateY(0) rotate(0);opacity:0}12%{opacity:.7}85%{opacity:.5}100%{transform:translateY(-230px) rotate(300deg);opacity:0}}
+#hp .hp-kpi,#hp .hp-card{--mx:50%;--my:50%}
+@media(hover:hover) and (pointer:fine){
+#hp .hp-kpi:hover,#hp .hp-card:hover{background-image:radial-gradient(240px circle at var(--mx) var(--my),color-mix(in srgb,var(--hp-a) 11%,transparent),transparent 70%)}
+#hp .hp-kpi{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s;--rx:0deg;--ry:0deg}
+#hp .hp-kpi:hover{transform:perspective(700px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(-3px)!important;box-shadow:0 14px 30px color-mix(in srgb,var(--color-fg) 14%,transparent)}
+}
+#hp .hp-card.rv0{animation:none!important;opacity:0;transform:translateY(26px) scale(.985)}
+#hp .hp-card.rvin{animation:hpSpring .7s cubic-bezier(.34,1.45,.64,1) both!important}
+#hp .hp-rib{transition:opacity .25s,filter .25s}
+#hp svg:has(.hp-rib:hover) .hp-rib:not(:hover){opacity:.2}
+#hp .hp-rib:hover{filter:brightness(1.12) saturate(1.2)}
+.hp.go .hp-rib{animation:fxRib .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--ri,0)*55ms)}
+@keyframes fxRib{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+.hp.go table tbody tr{animation:fxRow .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--ti,0)*22ms)}
+@keyframes fxRow{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+}
+@media print{#hp .hp-card.rv0{opacity:1!important;transform:none!important}.fx-prog,.fx-pills{display:none}}
 </style>
 <div id="hp" class="hp">
   <header class="hp-hero">
