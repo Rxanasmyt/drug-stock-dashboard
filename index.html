@@ -413,6 +413,46 @@
 }
 @media(hover:none){.hp-kpi:hover,.hp-gc:hover,.pr-c:hover{border-color:inherit}}
 .hp{padding-left:max(0px,env(safe-area-inset-left));padding-right:max(0px,env(safe-area-inset-right));padding-bottom:max(0px,env(safe-area-inset-bottom))}
+
+/* ---- showpiece animation (all gated by no-preference) ---- */
+.hp-hn{flex-direction:row;align-items:center;gap:clamp(8px,2vw,18px);flex-wrap:nowrap}
+.hp-hn-t{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.hp-tank{flex:none;width:clamp(84px,11vw,118px);display:flex;flex-direction:column;align-items:center;gap:2px}
+.hp-tank svg{width:100%;height:auto;overflow:visible}
+.hp-tcap{font-size:.62rem;color:var(--color-fg-muted);text-align:center;line-height:1.2}
+.hp-tpc{font:700 17px var(--hp-font);fill:var(--color-fg);paint-order:stroke;stroke:var(--color-panel);stroke-width:3px}
+.hp-liq{transform:translateY(calc((1 - var(--lvl,0)) * 110px))}
+.hp-bub{fill:#fff;opacity:.55}
+.hp-dr,.hp-do{opacity:0}
+@media(max-width:760px){.hp-hn{border-top:1px solid var(--color-border-line)}}
+@media (prefers-reduced-motion:no-preference){
+.hp-liq{transition:transform 1.8s cubic-bezier(.2,.8,.2,1)}
+.hp-w1{animation:hpWave 3.2s linear infinite}.hp-w2{animation:hpWave 5s linear infinite reverse}
+.hp-bub{animation:hpBub 3.4s ease-in infinite;animation-delay:var(--dl)}
+.hp-dr{animation:hpDrIn 1.5s ease-in infinite;animation-delay:var(--dl)}
+.hp-do{animation:hpDrOut 1.4s ease-in infinite;animation-delay:var(--dl)}
+.hp-hero::before{animation:hpFloat 12s ease-in-out infinite alternate}
+.hp.go .hp-hero h1{background-size:200% 100%;animation:hpShine 1.6s .3s ease-out both}
+.hp.go .hp-kpi,.hp.go .hp-card,.hp.go .hp-gc,.hp.go .hp-al{animation:hpSpring .7s cubic-bezier(.34,1.45,.64,1) both}
+.hp.go .hp-kpi:nth-child(2){animation-delay:.08s}.hp.go .hp-kpi:nth-child(3){animation-delay:.16s}.hp.go .hp-kpi:nth-child(4){animation-delay:.24s}.hp.go .hp-kpi:nth-child(5){animation-delay:.32s}.hp.go .hp-kpi:nth-child(6){animation-delay:.4s}.hp.go .hp-kpi:nth-child(7){animation-delay:.48s}.hp.go .hp-kpi:nth-child(8){animation-delay:.56s}
+.hp.go #ov-wf .hp-bar{transform-origin:0 50%;animation:hpW .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.3s + var(--i,0)*.16s)}
+.hp-line{filter:drop-shadow(0 0 5px color-mix(in srgb,var(--hp-a) 55%,transparent))}
+.hp-kpi{position:relative;overflow:hidden}
+.hp-kpi::before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 40%,color-mix(in srgb,#fff 40%,transparent) 50%,transparent 60%);transform:translateX(-120%);pointer-events:none}
+.hp.go .hp-kpi::before{animation:hpSweep 1.1s .5s ease-out 1 both}
+@media(hover:hover){.hp-kpi:hover::before{animation:hpSweep .9s ease-out 1 both}}
+.hp-kpi.crit::after{box-shadow:0 0 0 0 color-mix(in srgb,var(--color-bad) 55%,transparent)}
+.hp-kpi.crit{animation:hpRing 1.6s ease-out 3 1.2s}
+}
+@keyframes hpWave{to{transform:translateX(-60px)}}
+@keyframes hpBub{0%{transform:translateY(0);opacity:0}15%{opacity:.6}100%{transform:translateY(-75px);opacity:0}}
+@keyframes hpDrIn{0%{transform:translateY(0);opacity:0}12%{opacity:1}85%{opacity:.9}100%{transform:translateY(64px);opacity:0}}
+@keyframes hpDrOut{0%{transform:translateY(0);opacity:1}100%{transform:translateY(22px);opacity:0}}
+@keyframes hpShine{from{background-position:100% 0}to{background-position:0 0}}
+@keyframes hpSpring{0%{opacity:0;transform:translateY(26px) scale(.94)}100%{opacity:1;transform:none}}
+@keyframes hpRing{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--color-bad) 50%,transparent)}100%{box-shadow:0 0 0 16px transparent}}
+@media (prefers-reduced-motion:reduce){.hp-dr,.hp-do{opacity:.9}}
+@media print{.hp-tank{display:none}}
 </style>
 <div id="hp" class="hp">
   <header class="hp-hero">
@@ -432,7 +472,7 @@
     <button role="tab" data-act="tab" data-t="items">รายการทั้งหมด</button>
     <button role="tab" data-act="tab" data-t="alerts">สต็อกเสี่ยงและข้อสังเกต</button>
   </nav>
-  <div class="hp-keybar"><span class="hp-key"><span class="up-bad">แดง = ควรระวัง (หมดสต็อก/ใกล้หมด)</span><span class="dn-ok">เขียว = ปกติ</span><span class="flat">เทา = ไม่เคลื่อนไหว</span></span><span class="hp-keyb"><button class="hp-btn" data-act="copy">คัดลอกสรุป</button><button class="hp-btn" data-act="print">พิมพ์ / PDF</button></span></div>
+  <div class="hp-keybar"><span class="hp-key"><span class="up-bad">แดง = ควรระวัง (หมดสต็อก/ใกล้หมด)</span><span class="dn-ok">เขียว = ปกติ</span><span class="flat">เทา = ไม่เคลื่อนไหว</span></span><span class="hp-keyb"><button class="hp-btn" data-act="replay">▶ เล่นแอนิเมชันซ้ำ</button><button class="hp-btn" data-act="copy">คัดลอกสรุป</button><button class="hp-btn" data-act="print">พิมพ์ / PDF</button></span></div>
   <div class="hp-fbar" id="hp-fbar" hidden></div>
   <button class="hp-btn hp-ftog" id="hp-ftog" aria-expanded="false" aria-controls="hp-filters"><span>ตัวกรอง ▾</span></button>
   <div class="hp-filters" id="hp-filters">
