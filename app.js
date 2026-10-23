@@ -591,6 +591,13 @@ function render(){
   else if(S.tab==='alerts')renderAlerts();
   countUps();tabInd();
 }
-window.addEventListener('resize',tabInd);
+function redraw(){go();
+  if(S.tab==='overview')renderOverview();else if(S.tab==='cats')renderCats();else if(S.tab==='groups')renderGroups();else if(S.tab==='abc')renderAbc();else if(S.tab==='items')renderItems();else if(S.tab==='alerts')renderAlerts();
+  countUps();tabInd();}
+let lastW=window.innerWidth,rzT=null;
+window.addEventListener('resize',()=>{tabInd();clearTimeout(rzT);rzT=setTimeout(()=>{if(!ready||window.innerWidth===lastW)return;lastW=window.innerWidth;anim=null;redraw();},180);});
+window.addEventListener('orientationchange',()=>{setTimeout(()=>{lastW=-1;window.dispatchEvent(new Event('resize'));},250);});
+document.addEventListener('touchstart',e=>{const t=$('#hp-tip');if(t&&!(e.target.closest&&e.target.closest('[data-tip]')))t.hidden=true;},{passive:true});
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('#hp-ftog');if(!b)return;const f=$('#hp-filters'),o=!f.classList.contains('open');f.classList.toggle('open',o);b.setAttribute('aria-expanded',String(o));b.querySelector('span').textContent=o?'ซ่อนตัวกรอง ▴':'ตัวกรอง ▾';});
 dash.onData(render);
 })();
