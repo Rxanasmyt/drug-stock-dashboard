@@ -533,6 +533,22 @@
 @keyframes fxRow{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
 }
 @media print{#hp .hp-card.rv0{opacity:1!important;transform:none!important}.fx-prog,.fx-pills{display:none}}
+
+/* race */
+.rc-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.rc-ctl input[type=range]{flex:1 1 160px;min-width:120px;accent-color:var(--hp-a)}
+.rc-m{font-weight:600;min-width:5.5em;text-align:center;font-variant-numeric:tabular-nums}
+.rc-box{position:relative;margin-top:12px}
+.rc-row{position:absolute;left:0;right:0;top:0;height:26px;display:grid;grid-template-columns:minmax(80px,32%) 1fr auto;gap:8px;align-items:center;transform:translateY(calc(var(--y)*30px));opacity:var(--o);font-size:.82rem}
+.rc-row .l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-row .t{height:16px;border-radius:4px;background:color-mix(in srgb,var(--color-fg) 5%,transparent);overflow:hidden}
+.rc-row .t i{display:block;height:100%;width:calc(var(--w)*1%);border-radius:4px;background:var(--rc)}
+.rc-row .v{font-variant-numeric:tabular-nums;text-align:right;min-width:4.6em}
+.rc-row .v small{display:block;font-size:.66rem;line-height:1}
+.rc-up{color:var(--color-ok)}.rc-dn{color:var(--color-bad)}
+@media (prefers-reduced-motion:no-preference){.rc-row{transition:transform .75s cubic-bezier(.2,.8,.2,1),opacity .4s}.rc-row .t i{transition:width .75s cubic-bezier(.2,.8,.2,1)}}
+.dl{font-weight:700;white-space:nowrap}.dl-up{color:var(--color-ok)}.dl-dn{color:var(--color-bad)}
+@media (prefers-reduced-motion:no-preference){.hp.go .dl{display:inline-block;animation:hpPop .6s .6s cubic-bezier(.34,1.6,.64,1) both}}
 </style>
 <div id="hp" class="hp">
   <header class="hp-hero">
@@ -614,6 +630,7 @@
     <div class="hp-grid" id="ct-cards"></div>
     <div class="hp-card"><h2>แผนภาพการไหลของมูลค่า (Sankey)</h2><p class="hp-note">ความกว้างแถบ = มูลค่า (บาท) · ซ้าย: ยกมา และรับ → กลาง: หมวดสินค้า → ขวา: จ่าย และคงเหลือ · กดหมวดเพื่อกรอง</p><div id="ct-sk" class="hp-svg" style="min-height:300px"></div></div>
     <div class="hp-card"><h2>จ่ายรายเดือนแยกตามหมวด (Heatmap)</h2><p class="hp-note">มูลค่าจ่ายต่อเดือน (บาท) · ยิ่งเข้ม ยิ่งจ่ายมาก · ช่อง "·" = เดือนที่ยังไม่มีข้อมูล</p><div id="ct-hm" class="hp-hmw"></div></div>
+    <div class="hp-card"><h2>อันดับยา 10 อันดับแรก ย้อนดูรายเดือน</h2><p class="hp-note" id="rc-n"></p><div id="ct-race"></div></div>
     <div class="hp-card"><h2>หมวดสินค้า × หน่วยนับ: ปริมาณและมูลค่า</h2><p class="hp-note" id="ct-n"></p><div class="hp-tw st" id="ct-tbl"></div></div>
   </section>
 

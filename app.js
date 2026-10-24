@@ -189,7 +189,7 @@ function heatmap(host){
   host.innerHTML=h+'</div>';
 }
 function aggPrev(rows,m){const len=S.to-S.from+1,f=S.from-len;if(f<1)return null;const sf=S.from,st=S.to;S.from=f;S.to=f+len-1;let r;try{r=agg(rows,m);}finally{S.from=sf;S.to=st;}return r;}
-const dlt=(c,p)=>(p==null||!p)?'':' · '+(c>=p?'▲ +':'▼ −')+pct(Math.abs(c-p)/p,0)+' เทียบช่วงก่อนหน้า';
+const dlt=(c,p)=>(p==null||!p)?'':' · <span class="dl '+(c>=p?'dl-up':'dl-dn')+'">'+(c>=p?'▲ +':'▼ −')+pct(Math.abs(c-p)/p,0)+'</span> เทียบช่วงก่อนหน้า';
 const pcode=x=>{const p=pcBy[x.pcat];return p?p.short:'';};
 function orderCalc(){
   const rows=filt({pc:1,view:1});
@@ -407,7 +407,7 @@ function renderCats(){
   const rows=filt({view:1}),m=S.m;
   const tv=agg(rows,'v');
   headline($('#ct-head'),'info','<span class="hp-hl-t">แยกตามหมวดสินค้า · '+esc(rangeLabel())+'</span> มูลค่าคงเหลือรวม <b>'+baht(tv.b)+' บาท</b> จ่ายในช่วง <b>'+baht(tv.d)+' บาท</b> รับ <b>'+baht(tv.r)+' บาท</b> · กลุ่ม: '+esc(viewName()));
-  sankey($('#ct-sk'));heatmap($('#ct-hm'));
+  sankey($('#ct-sk'));heatmap($('#ct-hm'));renderRace();
   $('#ct-cards').innerHTML=PC.map((p,i)=>{
     const rs=rows.filter(x=>x.pcat===p.code),a=agg(rs,'v');
     const uq={};rs.forEach(x=>{const q=agg([x],'q');const u=uq[x.unit]=uq[x.unit]||{o:0,r:0,d:0,b:0};u.o+=q.o;u.r+=q.r;u.d+=q.d;u.b+=q.b;});
@@ -730,6 +730,38 @@ function redraw(){go();
   if(S.tab==='overview')renderOverview();else if(S.tab==='cats')renderCats();else if(S.tab==='groups')renderGroups();else if(S.tab==='abc')renderAbc();else if(S.tab==='items')renderItems();else if(S.tab==='order')renderOrder();else if(S.tab==='alerts')renderAlerts();
   countUps();liqGo();critMark();tabInd();fxPass();}
 
+
+/* ---- race: อันดับ 10 อันดับแรกรายเดือน + แถบเลื่อน + เล่นย้อนดู ---- */
+let rcT=null;const RC={i:-1,k:'d',N:10};
+function renderRace(){
+  const host=$('#ct-race');if(!host)return;clearInterval(rcT);rcT=null;
+  const rows=scope(),n=AV,key=RC.k==='d'?'dv':'bv';
+  if(RC.i<0||RC.i>=n)RC.i=n-1;
+  const fr=[];for(let i=0;i<n;i++){fr.push(rows.map(x=>({x:x,v:+x[key][i]||0})).filter(o=>o.v>0).sort((a,b)=>b.v-a.v).slice(0,RC.N));}
+  const ids={};fr.forEach(f=>f.forEach(o=>{ids[o.x.id]=o.x;}));
+  const mx=Math.max(1,...fr.map(f=>f.length?f[0].v:0));
+  const col=RC.k==='d'?fcol('d'):fcol('b');
+  const idl=Object.keys(ids);
+  $('#rc-n').textContent=n>1?'เลื่อนแถบหรือกดเล่น เพื่อดูว่ายาตัวไหนขึ้นหรือตกอันดับในแต่ละเดือน · ความยาวแท่งใช้สเกลเดียวกันทุกเดือน':'ตอนนี้มีข้อมูล 1 เดือน จึงยังเลื่อนย้อนดูไม่ได้ · เมื่อมีเดือนถัดไปจะเล่นย้อนดูการขึ้นลงของอันดับได้';
+  host.innerHTML='<div class="rc-ctl"><div class="hp-seg" role="group" aria-label="เกณฑ์จัดอันดับ"><button data-rk="d" aria-pressed="'+(RC.k==='d')+'">จ่าย (บาท)</button><button data-rk="b" aria-pressed="'+(RC.k==='b')+'">คงเหลือ (บาท)</button></div>'+
+    '<button class="hp-btn" id="rc-play"'+(n>1?'':' disabled')+'>▶ เล่น</button><input type="range" id="rc-sl" min="0" max="'+Math.max(0,n-1)+'" value="'+RC.i+'"'+(n>1?'':' disabled')+' aria-label="เลือกเดือน"><span class="rc-m" id="rc-m"></span></div>'+
+    '<div class="rc-box" id="rc-box" style="height:'+(RC.N*30)+'px">'+idl.map(id=>{const x=ids[id];return '<div class="rc-row" data-id="'+esc(id)+'" style="--o:0;--y:'+RC.N+';--w:0;--rc:'+col+'"><span class="l" title="'+esc(x.label)+'">'+esc(x.label)+'</span><span class="t"><i></i></span><span class="v"></span></div>';}).join('')+'</div>';
+  const box=$('#rc-box'),els={};$$('.rc-row',box).forEach(e=>{els[e.dataset.id]=e;});
+  const show=i=>{
+    RC.i=i;const f=fr[i]||[],pf=i>0?fr[i-1]:null,pr={};if(pf)pf.forEach((o,r)=>{pr[o.x.id]=r;});
+    const inn={};f.forEach((o,r)=>{inn[o.x.id]=1;const e=els[o.x.id];e.style.setProperty('--y',r);e.style.setProperty('--o',1);e.style.setProperty('--w',(o.v/mx*100).toFixed(1));
+      let d='';if(pf){if(pr[o.x.id]==null)d='<small class="rc-up">ใหม่</small>';else if(pr[o.x.id]>r)d='<small class="rc-up">▲'+(pr[o.x.id]-r)+'</small>';else if(pr[o.x.id]<r)d='<small class="rc-dn">▼'+(r-pr[o.x.id])+'</small>';}
+      e.querySelector('.v').innerHTML=bahtS(o.v)+d;});
+    Object.keys(els).forEach(id=>{if(!inn[id]){els[id].style.setProperty('--o',0);els[id].style.setProperty('--y',RC.N);}});
+    $('#rc-m').textContent=mlab(i);const sl=$('#rc-sl');if(sl)sl.value=i;};
+  show(RC.i);
+  $$('[data-rk]',host).forEach(b=>b.addEventListener('click',()=>{RC.k=b.dataset.rk;renderRace();}));
+  const pb=$('#rc-play'),sl=$('#rc-sl');
+  const stop=()=>{clearInterval(rcT);rcT=null;if(pb)pb.textContent='▶ เล่น';};
+  if(pb)pb.addEventListener('click',()=>{if(rcT){stop();return;}if(RC.i>=n-1)show(0);pb.textContent='⏸ หยุด';
+    rcT=setInterval(()=>{if(!host.isConnected){stop();return;}if(RC.i>=n-1){stop();return;}show(RC.i+1);},reduced()?1400:1100);});
+  if(sl)sl.addEventListener('input',()=>{stop();show(+sl.value);});
+}
 /* ---- fx: ลูกเล่น animation เพิ่มเติม (ปิดอัตโนมัติเมื่อผู้ใช้ตั้งลดการเคลื่อนไหว) ---- */
 let fxIO=null,fxInit=false;
 function fxOnce(){
