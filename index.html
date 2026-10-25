@@ -549,6 +549,10 @@
 @media (prefers-reduced-motion:no-preference){.rc-row{transition:transform .75s cubic-bezier(.2,.8,.2,1),opacity .4s}.rc-row .t i{transition:width .75s cubic-bezier(.2,.8,.2,1)}}
 .dl{font-weight:700;white-space:nowrap}.dl-up{color:var(--color-ok)}.dl-dn{color:var(--color-bad)}
 @media (prefers-reduced-motion:no-preference){.hp.go .dl{display:inline-block;animation:hpPop .6s .6s cubic-bezier(.34,1.6,.64,1) both}}
+.sk-p{fill:var(--color-fg);opacity:.62;pointer-events:none}
+.sk-info{margin-top:8px;padding:8px 12px;border-radius:10px;font-size:.85rem;background:color-mix(in srgb,var(--hp-a) 10%,var(--color-panel));border:1px solid color-mix(in srgb,var(--hp-a) 30%,var(--color-border-line))}
+.hp-rib{cursor:pointer}
+#hp svg.has-sel .hp-rib:not(.sel){opacity:.12}#hp .hp-rib.sel{opacity:1;filter:brightness(1.12) saturate(1.25)}
 </style>
 <div id="hp" class="hp">
   <header class="hp-hero">

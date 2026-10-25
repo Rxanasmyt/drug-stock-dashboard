@@ -166,7 +166,7 @@ function sankey(host){
   let y=4;const L={};['o','r'].forEach(k=>{const v=k==='o'?tO:tR;L[k]={y0:y,h:v*ky,cur:y};y+=v*ky+gap*2;});
   y=4;P.forEach(o=>{o.y0=y;o.h=(o.a.o+o.a.r)*ky;o.inc=y;o.out=y;y+=o.h+gap;});
   const R={};y=4;[['d',tD],['b',tB]].forEach(([k,v])=>{R[k]={y0:y,h:v*ky,cur:y};y+=v*ky+gap*2;});
-  const rib=(x1,a0,a1,x2,b0,b1,c,tip)=>{const xm=(x1+x2)/2;return '<path class="hp-rib" d="M'+x1+' '+a0+' C'+xm+' '+a0+','+xm+' '+b0+','+x2+' '+b0+' L'+x2+' '+b1+' C'+xm+' '+b1+','+xm+' '+a1+','+x1+' '+a1+' Z" style="fill:'+c+'" data-tip="'+esc(tip)+'"/>';};
+  let pn=0;const rib=(x1,a0,a1,x2,b0,b1,c,tip)=>{const xm=(x1+x2)/2;const pt=(!reduced()&&(a1-a0)>2.5)?(function(){const ya=(a0+a1)/2,yb=(b0+b1)/2,d='M'+x1+' '+ya+' C'+xm+' '+ya+','+xm+' '+yb+','+x2+' '+yb,n=pn++,du=(3.2+(n%5)*.45).toFixed(2);return [0,1].map(j=>'<circle class="sk-p" r="2.2"><animateMotion dur="'+du+'s" begin="-'+((n*.7+j*du/2)%du).toFixed(2)+'s" repeatCount="indefinite" path="'+d+'"/></circle>').join('');})():'';return '<path class="hp-rib" d="M'+x1+' '+a0+' C'+xm+' '+a0+','+xm+' '+b0+','+x2+' '+b0+' L'+x2+' '+b1+' C'+xm+' '+b1+','+xm+' '+a1+','+x1+' '+a1+' Z" style="fill:'+c+'" data-tip="'+esc(tip)+'"/>'+pt;};
   let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="แผนภาพการไหลของมูลค่า ยกมาและรับ ผ่านแต่ละหมวด ไปสู่จ่ายและคงเหลือ">';
   P.forEach(o=>{
     [['o',o.a.o,fcol('o')],['r',o.a.r,fcol('r')]].forEach(([k,v,c])=>{if(v<=0)return;const hh=v*ky;s+=rib(xL+nw,L[k].cur,L[k].cur+hh,xM,o.inc,o.inc+hh,c,(k==='o'?'ยกมา':'รับ')+' → '+o.p.short+'\n'+baht(v)+' บาท');L[k].cur+=hh;o.inc+=hh;});
@@ -709,6 +709,7 @@ function tabInd(){
   nav.style.setProperty('--tx',b.offsetLeft+'px');nav.style.setProperty('--tw',b.offsetWidth+'px');
 }
 function render(){
+  morphSnap();
   if(!prep())return;
   const rt=$('#hp');
   if(rt){const p=colors();['a','b','c','d'].forEach((k,i)=>rt.style.setProperty('--hp-'+k,p[i]||'var(--color-fg)'));
@@ -724,11 +725,11 @@ function render(){
   else if(S.tab==='items')renderItems();
   else if(S.tab==='alerts')renderAlerts();
   else if(S.tab==='order')renderOrder();
-  countUps();liqGo();critMark();tabInd();fxPass();
+  countUps();liqGo();critMark();tabInd();morphApply();fxPass();
 }
 function redraw(){go();
   if(S.tab==='overview')renderOverview();else if(S.tab==='cats')renderCats();else if(S.tab==='groups')renderGroups();else if(S.tab==='abc')renderAbc();else if(S.tab==='items')renderItems();else if(S.tab==='order')renderOrder();else if(S.tab==='alerts')renderAlerts();
-  countUps();liqGo();critMark();tabInd();fxPass();}
+  countUps();liqGo();critMark();tabInd();morphApply();fxPass();}
 
 
 /* ---- race: อันดับ 10 อันดับแรกรายเดือน + แถบเลื่อน + เล่นย้อนดู ---- */
@@ -762,6 +763,41 @@ function renderRace(){
     rcT=setInterval(()=>{if(!host.isConnected){stop();return;}if(RC.i>=n-1){stop();return;}show(RC.i+1);},reduced()?1400:1100);});
   if(sl)sl.addEventListener('input',()=>{stop();show(+sl.value);});
 }
+
+/* ---- morph: แท่ง/แผนที่ treemap เลื่อนไหลจากค่าเดิมไปค่าใหม่เมื่อกรอง/กดเลือก ---- */
+let MSNAP=null,MTS=0;
+function mKey(e,kind){const host=e.closest('[id]');const row=e.closest('.hp-hb,.hp-pb,.hp-tmg');
+  const k=row?(row.getAttribute('data-k')||(row.querySelector('.hp-hb-l')||{}).textContent||''):'';
+  const idx=e.parentElement?Array.prototype.indexOf.call(e.parentElement.children,e):0;
+  return kind+'|'+(host?host.id:'')+'|'+k+'|'+idx;}
+function morphSnap(){
+  if(reduced()||!ready)return;const t=Date.now();if(MSNAP&&t-MTS<120)return;MTS=t;const m={};
+  $$('#hp .hp-hb-t i, #hp .hp-pb-t i').forEach(e=>{const w=e.style.width;if(w)m[mKey(e,'b')]=w;});
+  $$('#hp .hp-tmg rect').forEach(r=>{const g=r.closest('.hp-tmg');m[mKey(r,'t')+g.dataset.k]=[+r.getAttribute('x'),+r.getAttribute('y'),+r.getAttribute('width'),+r.getAttribute('height')];});
+  MSNAP=Object.keys(m).length?m:null;}
+function morphApply(){
+  const rt=$('#hp');if(!MSNAP||reduced()||!rt||rt.classList.contains('go'))return;const m=MSNAP;
+  const todo=[];
+  $$('#hp .hp-hb-t i, #hp .hp-pb-t i').forEach(e=>{const w1=e.style.width;if(!w1)return;const k=mKey(e,'b');const w0=m[k]!=null?m[k]:(Object.keys(m).some(q=>q.indexOf('b|'+((e.closest('[id]')||{}).id||'')+'|')===0)?'0%':null);
+    if(w0!=null&&w0!==w1){e.style.transition='none';e.style.animation='none';e.style.width=w0;todo.push(()=>{e.style.transition='width .9s cubic-bezier(.2,.8,.2,1)';e.style.width=w1;});}});
+  $$('#hp .hp-tmg rect').forEach(r=>{const g=r.closest('.hp-tmg');const o=m[mKey(r,'t')+g.dataset.k];const n=[+r.getAttribute('x'),+r.getAttribute('y'),+r.getAttribute('width'),+r.getAttribute('height')];
+    g.style.animation='none';r.style.transformBox='fill-box';r.style.transformOrigin='0 0';
+    if(o&&(o[0]!==n[0]||o[1]!==n[1]||o[2]!==n[2]||o[3]!==n[3])){r.style.transition='none';r.style.transform='translate('+(o[0]-n[0])+'px,'+(o[1]-n[1])+'px) scale('+(o[2]/n[2]).toFixed(4)+','+(o[3]/n[3]).toFixed(4)+')';
+      const tx=g.querySelectorAll('text');tx.forEach(x=>{x.style.opacity=0;});
+      todo.push(()=>{r.style.transition='transform .85s cubic-bezier(.2,.8,.2,1)';r.style.transform='none';tx.forEach(x=>{x.style.transition='opacity .5s .55s';x.style.opacity=1;});});}
+    else if(!o&&Object.keys(m).some(q=>q.indexOf('t|')===0)){r.style.transition='none';r.style.transform='scale(.4)';r.style.opacity=0;todo.push(()=>{r.style.transition='transform .7s cubic-bezier(.2,.8,.2,1),opacity .5s';r.style.transform='none';r.style.opacity='';});}});
+  if(todo.length){void rt.offsetWidth;requestAnimationFrame(()=>requestAnimationFrame(()=>todo.forEach(f=>f())));}
+}
+/* ---- sankey: กดเส้นเพื่อล็อกและดูตัวเลข ---- */
+document.addEventListener('click',e=>{
+  const rb=e.target.closest&&e.target.closest('#hp .hp-rib');const host=$('#ct-sk');if(!host)return;
+  if(!rb){if(e.target.closest&&e.target.closest('#ct-sk .sk-info'))return;if(host.contains(e.target))return;return;}
+  const svg=rb.ownerSVGElement,was=rb.classList.contains('sel');
+  $$('.hp-rib.sel',host).forEach(x=>x.classList.remove('sel'));
+  let inf=$('.sk-info',host);if(!inf){inf=document.createElement('div');inf.className='sk-info';inf.setAttribute('role','status');host.appendChild(inf);}
+  if(was){svg.classList.remove('has-sel');inf.hidden=true;}
+  else{rb.classList.add('sel');svg.classList.add('has-sel');inf.hidden=false;inf.textContent=(rb.getAttribute('data-tip')||'').replace(/\n/g,' · ')+'  (กดอีกครั้งเพื่อยกเลิก)';}
+});
 /* ---- fx: ลูกเล่น animation เพิ่มเติม (ปิดอัตโนมัติเมื่อผู้ใช้ตั้งลดการเคลื่อนไหว) ---- */
 let fxIO=null,fxInit=false;
 function fxOnce(){
