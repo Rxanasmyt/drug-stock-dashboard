@@ -206,8 +206,9 @@ function orderCalc(){
   L.sort((p,q)=>p.tier-q.tier||(p.tier===1?q.v.d-p.v.d:p.st.dos-q.st.dos));
   return L;
 }
-function orderTable(L){return L.map(o=>[pcode(o.x),o.x.label,o.x.code,o.x.unit,o.st.t,o.q.b,Math.round(o.rate*30*10)/10,isFinite(o.st.dos)?Math.round(o.st.dos):'',o.need,o.boxes==null?'':o.boxes,o.val==null?'':Math.round(o.val),o.bad?'ราคาน่าสงสัย ตรวจก่อนสั่ง':'']);}
-const ORD_H=['หมวด','รายการ','รหัส','หน่วย','สถานะ','คงเหลือ','จ่ายเฉลี่ย/เดือน','พอใช้(วัน)','แนะนำสั่ง(หน่วย)','≈หน่วยบรรจุ','มูลค่าโดยประมาณ(บาท)','หมายเหตุ'];
+function stockoutLab(d){if(d==null||!isFinite(d)||d<=0)return '';try{const c=trCtx();if(!c.n)return '';return thMon(new Date(endDate(c.gE).getTime()+d*864e5));}catch(e){return '';}}
+function orderTable(L){return L.map(o=>[pcode(o.x),o.x.label,o.x.code,o.x.unit,o.st.t,o.q.b,Math.round(o.rate*30*10)/10,isFinite(o.st.dos)?Math.round(o.st.dos):'',o.need,o.boxes==null?'':o.boxes,o.val==null?'':Math.round(o.val),o.bad?'ราคาน่าสงสัย ตรวจก่อนสั่ง':'',stockoutLab(o.st.dos)]);}
+const ORD_H=['หมวด','รายการ','รหัส','หน่วย','สถานะ','คงเหลือ','จ่ายเฉลี่ย/เดือน','พอใช้(วัน)','แนะนำสั่ง(หน่วย)','≈หน่วยบรรจุ','มูลค่าโดยประมาณ(บาท)','หมายเหตุ','คาดว่าหมด'];
 function dlCsv(name,hd,rows){
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
   const t='\ufeff'+[hd].concat(rows).map(r=>r.map(q).join(',')).join('\r\n');
@@ -277,7 +278,7 @@ function syncControls(){
   {const ex=$('#hp-excl');if(ex){ex.setAttribute('aria-pressed',String(S.excl));$('#hp-excl-n').textContent=Object.keys(DQ).length;}}
   const rows=scope(),a=agg(rows);
   $('#hp-ctx').innerHTML='กำลังดู: <b>'+esc(scopeName())+'</b> · <b>'+esc(rangeLabel())+'</b> · '+(S.m==='q'?'ปริมาณหน่วย <b>'+esc(S.unit)+'</b>':'มูลค่า')+' · คงเหลือ <b>'+fmtM(a.b)+' '+unitTxt()+'</b> · '+cntTxt(rows)+(S.m==='q'?' <span class="hp-unitnote">(ปริมาณรวมได้เฉพาะรายการที่หน่วยนับเดียวกัน)</span>':'');
-  ['overview','order','cats','groups','abc','items','alerts'].forEach(t=>{$('#hp-'+t).hidden=S.tab!==t;});
+  ['overview','order','trend','cats','groups','abc','items','alerts'].forEach(t=>{$('#hp-'+t).hidden=S.tab!==t;});
   heroRender(rows,a);
 }
 function tankHtml(a){
@@ -727,7 +728,8 @@ function render(){
   dqCalc();
   syncControls();renderFbar();
   renderDetail();
-  if(S.tab==='overview')renderOverview();
+  if(S.tab==='overview'){renderOverview();renderDqNote();renderSunk();renderCmp();}
+  else if(S.tab==='trend')renderTrend();
   else if(S.tab==='cats')renderCats();
   else if(S.tab==='groups')renderGroups();
   else if(S.tab==='abc')renderAbc();
@@ -737,7 +739,7 @@ function render(){
   countUps();liqGo();critMark();tabInd();thSync();ovMore();takeaways();glossPass();topBtn();morphApply();fxPass();
 }
 function redraw(){go();
-  if(S.tab==='overview')renderOverview();else if(S.tab==='cats')renderCats();else if(S.tab==='groups')renderGroups();else if(S.tab==='abc')renderAbc();else if(S.tab==='items')renderItems();else if(S.tab==='order')renderOrder();else if(S.tab==='alerts')renderAlerts();
+  if(S.tab==='overview'){renderOverview();renderDqNote();renderSunk();renderCmp();}else if(S.tab==='trend')renderTrend();else if(S.tab==='cats')renderCats();else if(S.tab==='groups')renderGroups();else if(S.tab==='abc')renderAbc();else if(S.tab==='items')renderItems();else if(S.tab==='order')renderOrder();else if(S.tab==='alerts')renderAlerts();
   countUps();liqGo();critMark();tabInd();thSync();ovMore();takeaways();glossPass();topBtn();morphApply();fxPass();}
 
 
@@ -771,6 +773,152 @@ function renderRace(){
   if(pb)pb.addEventListener('click',()=>{if(rcT){stop();return;}if(RC.i>=n-1)show(0);pb.textContent='⏸ หยุด';
     rcT=setInterval(()=>{if(!host.isConnected){stop();return;}if(RC.i>=n-1){stop();return;}show(RC.i+1);},reduced()?1400:1100);});
   if(sl)sl.addEventListener('input',()=>{stop();show(+sl.value);});
+}
+
+
+/* ================= v15: เงินจม · ในบัญชี vs นอกบัญชี · หมายเหตุราคาผิดปกติ ================= */
+const TH_M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const thMon=d=>TH_M[d.getMonth()]+' '+String(d.getFullYear()+543).slice(2);
+function renderDqNote(){
+  const host=$('#ov-dq');if(!host)return;
+  const L=D.filter(x=>DQ[x.id]&&(S.pc==='ALL'||x.pcat===S.pc)&&(S.view==='ALL'||gk(x)===S.view)&&(S.m!=='q'||!S.unit||x.unit===S.unit));
+  if(!L.length){host.hidden=true;host.innerHTML='';return;}
+  const all=filt({pc:1,view:1,unit:1}).concat(S.excl?L:[]);
+  const tb=sum(all.map(x=>agg([x],'v').b)),dqb=sum(L.map(x=>agg([x],'v').b)),dqd=sum(L.map(x=>agg([x],'v').d));
+  const top=L.slice().sort((a,b)=>agg([b],'v').b-agg([a],'v').b)[0];
+  host.hidden=false;host.className='hp-dqn';
+  host.innerHTML='<span class="ic">!</span><div><b>หมายเหตุความถูกต้องของมูลค่า:</b> พบ <b>'+nf(L.length)+' รายการ</b> ที่ราคาต่อหน่วยผิดปกติ (สูงกว่ารายการใกล้เคียงมาก) มูลค่าคงเหลือรวม <b>'+baht(dqb)+' บาท</b>'+(tb>0?' ('+pct(dqb/tb,1)+' ของคงเหลือทั้งหมด)':'')+(dqd>0?' และมูลค่าจ่าย '+baht(dqd)+' บาท':'')+(top?' · สูงสุดคือ '+esc(top.label):'')+'. '+(S.excl?'ตัวเลขมูลค่าในหน้านี้ <b>ไม่นับ</b>รายการเหล่านี้แล้ว':'ตัวเลขมูลค่าในหน้านี้ <b>นับรวม</b>รายการเหล่านี้อยู่ อาจสูงเกินจริง')+' · <button class="hp-lk" data-act="excl">'+(S.excl?'นับรวมกลับ':'ไม่นับรายการเหล่านี้')+'</button></div>';
+}
+function renderSunk(){
+  const host=$('#ov-sunk');if(!host)return;
+  const rows=scope(),tot=sum(rows.map(x=>agg([x],'v').b));
+  const L=[];rows.forEach(x=>{const st=stat(x);if(st.k==='idle'||st.k==='over'){const v=agg([x],'v');if(v.b>0)L.push({x:x,k:st.k,b:v.b,dos:st.dos});}});
+  const idle=sum(L.filter(o=>o.k==='idle').map(o=>o.b)),over=sum(L.filter(o=>o.k==='over').map(o=>o.b)),sunk=idle+over;
+  L.sort((a,b)=>b.b-a.b);
+  const top=L.slice(0,8),ni=L.filter(o=>o.k==='idle').length,no=L.filter(o=>o.k==='over').length;
+  const list=top.map(o=>({label:o.x.label,val:o.b,attr:'data-act="detail" data-id="'+o.x.id+'"',warn:!!DQ[o.x.id],color:o.k==='idle'?'var(--cds-chart-muted)':'var(--color-warn)',vtxt:baht(o.b)+' · '+(o.k==='idle'?'ไม่เคลื่อนไหว':'พอใช้ '+nf(Math.round(o.dos))+' วัน'),tip:o.x.label+'\n'+(o.k==='idle'?'มีของแต่ไม่มีการจ่ายในช่วงที่ใช้คำนวณ':'ล้นสต็อก: พอใช้ '+nf(Math.round(o.dos))+' วัน')+'\nมูลค่าคงเหลือ '+baht(o.b)+' บาท'}));
+  const sh=tot>0?sunk/tot:0;
+  host.innerHTML='<h2>เงินที่จมอยู่ในคลัง</h2>'+
+   '<p class="hp-sum2">มูลค่าคงเหลือที่ <b>ล้นสต็อก</b> หรือ <b>ไม่เคลื่อนไหว</b> รวม <b class="'+(sh>.25?'up-bad':'')+'">'+baht(sunk)+' บาท</b>'+(tot>0?' ('+pct(sh,0)+' ของมูลค่าคงเหลือ)':'')+'</p>'+
+   '<div class="sk-split" role="img" aria-label="สัดส่วนมูลค่าคงเหลือ"><i style="flex:'+Math.max(idle,0)+';background:var(--cds-chart-muted)"></i><i style="flex:'+Math.max(over,0)+';background:var(--color-warn)"></i><i style="flex:'+Math.max(tot-sunk,0)+';background:color-mix(in srgb,var(--color-ok) 60%,transparent)"></i></div>'+
+   '<div class="hp-lg"><span style="--c:var(--cds-chart-muted)">ไม่เคลื่อนไหว '+baht(idle)+' ('+nf(ni)+' รายการ)</span><span style="--c:var(--color-warn)">ล้นสต็อก '+baht(over)+' ('+nf(no)+' รายการ)</span><span style="--c:color-mix(in srgb,var(--color-ok) 60%,transparent)">ส่วนที่ใช้งานปกติ '+baht(Math.max(tot-sunk,0))+'</span></div>'+
+   (list.length?'<div class="hp-hbs">'+hbarsHtml(list)+'</div><p class="hp-note">8 อันดับแรกตามมูลค่า · กดเพื่อดูรายละเอียดรายเดือน · '+esc(rateNote())+' · ควรชะลอการสั่ง ตรวจสอบวันหมดอายุ หรือโอนไปหน่วยที่ใช้</p>':'<div class="hp-empty">ไม่พบรายการล้นสต็อกหรือไม่เคลื่อนไหวในตัวกรองนี้</div>');
+}
+const dosTxt=v=>v==null||!isFinite(v)?'—':v>1000?'> 1,000':nf(Math.round(v));
+function renderCmp(){
+  const host=$('#ov-cmp');if(!host)return;
+  const rows=filt({view:1,unit:1}),A=rows.filter(x=>x.pcat==='nlem'),B=rows.filter(x=>x.pcat==='non');
+  if(!A.length&&!B.length){host.innerHTML='<h2>ยาในบัญชีเทียบยานอกบัญชี</h2><div class="hp-empty">ไม่มีข้อมูลในตัวกรองนี้</div>';return;}
+  const M=r=>{const v=agg(r,'v');return {n:nAct(r),d:v.d,b:v.b,o:v.o,dos:dos(agg(r,'q'))};};
+  const a=M(A),b=M(B);
+  const row=(t,x,y,f,col1,col2)=>{const T=x+y;const pa=T>0?x/T:0;return '<div class="cmp-r"><span class="cmp-t">'+t+'</span><div class="cmp-bar" role="img" aria-label="'+t+' ในบัญชี '+Math.round(pa*100)+'% นอกบัญชี '+Math.round((1-pa)*100)+'%"><i style="width:'+(pa*100).toFixed(1)+'%;background:'+col1+'"><b>'+(pa>.12?pct(pa,0):'')+'</b></i><i style="width:'+((T>0?1-pa:0)*100).toFixed(1)+'%;background:'+col2+'"><b>'+(T>0&&1-pa>.12?pct(1-pa,0):'')+'</b></i></div><span class="cmp-v">'+f(x)+' : '+f(y)+'</span></div>';};
+  const c1=pcCol('nlem'),c2=pcCol('non');
+  const sd=a.d+b.d>0?b.d/(a.d+b.d):0;
+  host.innerHTML='<h2>ยาในบัญชีเทียบยานอกบัญชี</h2>'+
+   '<p class="hp-sum2">ยานอกบัญชียาหลักแห่งชาติคิดเป็น <b>'+pct(sd,1)+'</b> ของมูลค่าจ่ายยา ('+baht(b.d)+' จาก '+baht(a.d+b.d)+' บาท) · '+esc(rangeLabel())+'</p>'+
+   lgd([['ยาในบัญชี',c1],['ยานอกบัญชี',c2]])+
+   row('จำนวนรายการที่เคลื่อนไหว',a.n,b.n,nf,c1,c2)+row('มูลค่าจ่าย (บาท)',a.d,b.d,baht,c1,c2)+row('มูลค่าคงเหลือ (บาท)',a.b,b.b,baht,c1,c2)+
+   '<div class="cmp-r"><span class="cmp-t">วันที่สต็อกพอใช้</span><span class="cmp-d"><b style="color:'+c1+'">'+dosTxt(a.dos)+'</b> วัน <small>(ในบัญชี)</small> · <b style="color:'+c2+'">'+dosTxt(b.dos)+'</b> วัน <small>(นอกบัญชี)</small></span></div>'+
+   '<p class="hp-note">เทียบเฉพาะยา 2 หมวดนี้ในมุมมองกลุ่มที่เลือก (ไม่รวมวัสดุ ยาสนับสนุน เวชภัณฑ์มิใช่ยา) · ตัวเลขรวมรายการราคาน่าสงสัยตามที่ตั้งในตัวกรอง</p>';
+}
+
+
+/* ================= v15: แนวโน้ม · เดือนผิดปกติ · ผู้เปลี่ยนแปลง · กำลังจะล้น · ประมาณการหมด ================= */
+function trCtx(){const gE=OFF+S.to-1,ix=[];for(let i=0;i<=gE&&i<ALLM.length;i++)if(ALLM[i].has)ix.push(i);return {gE:gE,ix:ix,n:ix.length};}
+function endDate(i){const m=ALLM[i];return new Date(+String(m.ym).slice(0,4),+String(m.ym).slice(5,7),0);}
+function anomalyCalc(rows,c){
+  const T=c.ix.map(i=>sum(rows.map(x=>x.A.dv[i]))),n=T.length,R=T.map(v=>({v:v,base:null,dev:0,flag:0}));
+  if(n<3)return R;
+  for(let k=0;k<n;k++){const o=T.filter((_,j)=>j!==k);const base=n>=5?d3.median(o):d3.mean(o);if(!(base>0))continue;
+    const dev=(T[k]-base)/base;R[k].base=base;R[k].dev=dev;
+    if(n>=5){const mad=1.4826*d3.median(o.map(v=>Math.abs(v-base)));const z=(T[k]-base)/Math.max(mad,0.05*base);R[k].z=z;if(Math.abs(z)>=2.5&&Math.abs(dev)>=.25)R[k].flag=dev>0?1:-1;}
+    else if(Math.abs(dev)>=.35)R[k].flag=dev>0?1:-1;}
+  return R;
+}
+function contributors(rows,c,k){
+  const i=c.ix[k],others=c.ix.filter((_,j)=>j!==k);
+  return rows.map(x=>{const base=others.length?d3.mean(others.map(j=>x.A.dv[j])):0;return {x:x,d:x.A.dv[i]-base};}).filter(o=>Math.abs(o.d)>0).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,3);
+}
+function anomalyChart(host,rows,c,R){
+  const n=c.n,W=Math.max(300,host.clientWidth||640),H=W<520?200:240,m={l:46,r:10,t:16,b:28};
+  const mx=Math.max(1,d3.max(R,r=>r.v)*1.12),bw=(W-m.l-m.r)/n,y=v=>H-m.b-(v/mx)*(H-m.t-m.b);
+  const ys=d3.scaleLinear().domain([0,mx]).nice().ticks(4);
+  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="มูลค่าจ่ายรายเดือนพร้อมเครื่องหมายเดือนที่ผิดปกติ">';
+  ys.forEach(t=>{s+='<line x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+y(t)+'" y2="'+y(t)+'" stroke="var(--cds-chart-grid)"/><text class="hp-ax" x="'+(m.l-6)+'" y="'+(y(t)+4)+'" text-anchor="end">'+bahtS(t)+'</text>';});
+  const bs=R.filter(r=>r.base!=null).map(r=>r.base);const mid=n>=3?d3.median(R.map(r=>r.v)):null;
+  if(mid>0)s+='<line x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+y(mid)+'" y2="'+y(mid)+'" stroke="var(--cds-chart-reference)" stroke-dasharray="5 4"/><text class="hp-ax" x="'+(W-m.r)+'" y="'+(y(mid)-4)+'" text-anchor="end">ค่ากลาง '+bahtS(mid)+'</text>';
+  R.forEach((r,k)=>{const x=m.l+k*bw+bw*.18,w=bw*.64,col=r.flag?(r.flag>0?'var(--color-warn)':'var(--pl2)'):fcol('d');
+    const tip=ALLM[c.ix[k]].full+' '+ALLM[c.ix[k]].year+'\nมูลค่าจ่าย '+baht(r.v)+' บาท'+(r.base?'\nเทียบเดือนอื่น '+(r.dev>=0?'+':'−')+pct(Math.abs(r.dev),0):'')+(r.flag?'\n'+(r.flag>0?'สูงผิดปกติ':'ต่ำผิดปกติ'):'');
+    s+='<g class="hp-trb" style="--i:'+k+'" data-tip="'+esc(tip)+'"><rect x="'+x.toFixed(1)+'" y="'+y(r.v).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+Math.max(1,H-m.b-y(r.v)).toFixed(1)+'" rx="4" style="fill:'+col+';opacity:'+(r.flag?1:.85)+'"'+(r.flag?' stroke="var(--color-fg)" stroke-width="1.6"':'')+'/>'+
+     (r.flag?'<text x="'+(x+w/2)+'" y="'+(y(r.v)-6)+'" text-anchor="middle" style="font-weight:700;fill:'+(r.flag>0?'var(--color-warn)':'var(--pl2)')+'">'+(r.flag>0?'▲':'▼')+'</text>':'')+
+     '<text class="hp-ax" x="'+(x+w/2)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(ALLM[c.ix[k]].short)+'</text></g>';});
+  host.innerHTML=s+'</svg>';
+}
+function moversCalc(rows,c){
+  const n=c.n;if(n<2)return null;
+  const last=c.ix[n-1],prev=c.ix.slice(Math.max(0,n-4),n-1);
+  const tot=sum(rows.map(x=>sum(prev.map(i=>x.A.dv[i]))/prev.length));
+  const minV=Math.max(300,tot*0.005);
+  const L=rows.map(x=>{const cur=x.A.dq[last],base=d3.mean(prev.map(i=>x.A.dq[i])),cv=x.A.dv[last],bv=d3.mean(prev.map(i=>x.A.dv[i]));
+    return {x:x,cur:cur,base:base,cv:cv,bv:bv,dv:cv-bv,pc:base>0?(cur-base)/base:null};}).filter(o=>o.cur>0||o.base>0);
+  const up=L.filter(o=>o.dv>=minV&&(o.pc==null||o.pc>=.3)).sort((a,b)=>b.dv-a.dv).slice(0,8);
+  const dn=L.filter(o=>-o.dv>=minV&&(o.cur===0||o.pc<=-.3)).sort((a,b)=>a.dv-b.dv).slice(0,8);
+  // อันดับ: มูลค่าจ่ายเดือนล่าสุด เทียบค่าเฉลี่ยก่อนหน้า
+  const rk=key=>{const m={};L.slice().sort((a,b)=>b[key]-a[key]).forEach((o,r)=>{m[o.x.id]=r+1;});return m;};
+  const rc=rk('cv'),rb=rk('bv');
+  const top=L.slice().sort((a,b)=>b.cv-a.cv).slice(0,10).map(o=>({o:o,r:rc[o.x.id],p:o.bv>0?rb[o.x.id]:null}));
+  return {up:up,dn:dn,top:top,last:last,prev:prev,minV:minV};
+}
+function slowCalc(rows,c){
+  const n=c.n;if(n<3)return null;
+  const i0=c.ix[n-1],i1=c.ix[n-2],i2=c.ix[n-3],days=ALLM[i0].days;
+  const L=[];rows.forEach(x=>{const d0=x.A.dq[i0],d1=x.A.dq[i1],d2=x.A.dq[i2],b0=x.A.bq[i0];
+    if(!(d2>0&&d2>=d1&&d1>=d0&&d0<=d2*.6&&b0>0))return;
+    const st=stat(x);if(st.k==='over'||st.k==='idle'||st.k==='out'||st.k==='none')return;
+    const dl=d0>0?b0/(d0/days):Infinity;if(!(dl>TH.over))return;
+    L.push({x:x,d:[d2,d1,d0],dos3:st.dos,dosL:dl,bv:x.A.bv[i0]});});
+  return L.sort((a,b)=>b.bv-a.bv);
+}
+function forecastCalc(rows,c){
+  if(!c.n)return null;const e=endDate(c.gE);const L=[];
+  rows.forEach(x=>{const a=agg([x],'q');if(!(a.b>0)||!(a.dk>0))return;const d=dos(a);if(!isFinite(d))return;
+    const dt=new Date(e.getTime()+d*864e5);L.push({x:x,dos:d,dt:dt,key:dt.getFullYear()*12+dt.getMonth(),bv:agg([x],'v').b});});
+  return {e:e,L:L};
+}
+const trTbl=(h,body)=>'<div class="hp-tw st"><table><thead><tr>'+h.map(t=>'<th>'+t+'</th>').join('')+'</tr></thead><tbody>'+body+'</tbody></table></div>';
+function renderTrend(){
+  const rows=filt({pc:1,view:1}),c=trCtx();
+  const need=(el,t)=>{$(el).innerHTML='<div class="hp-empty">'+t+'</div>';};
+  const R=anomalyCalc(rows,c),mv=moversCalc(rows,c),sl=slowCalc(rows,c),fc=forecastCalc(rows,c);
+  const nf_=R.filter(r=>r.flag).length;
+  headline($('#tr-head'),c.n<2?'info':nf_?'warn':'ok','<span class="hp-hl-t">แนวโน้มการใช้ยา · '+esc(scopeName())+'</span> '+(c.n<2?'ตอนนี้มีข้อมูล <b>'+c.n+' เดือน</b> จึงดูแนวโน้มยังไม่ได้ · ส่วน "ประมาณการเดือนที่ยาจะหมด" ใช้ได้แล้ว และส่วนอื่นจะเริ่มทำงานเมื่อมีเดือนถัดไป':'มีข้อมูล <b>'+c.n+' เดือน</b> · เดือนที่ผิดปกติ <b>'+nf_+'</b> · ยาที่ใช้เพิ่มเร็ว <b>'+(mv?mv.up.length:0)+'</b> · ใช้ลดเร็ว <b>'+(mv?mv.dn.length:0)+'</b> · กำลังจะล้นสต็อก <b>'+(sl?sl.length:0)+'</b> รายการ'));
+  // 1 anomaly
+  const hn=$('#tr-an-n');
+  if(c.n<3){hn.textContent='ต้องมีข้อมูลอย่างน้อย 3 เดือนจึงจะตรวจเดือนที่ผิดปกติได้';$('#tr-an').innerHTML='';need('#tr-an-l','ยังไม่มีข้อมูลพอ');}
+  else{hn.textContent='แท่ง = มูลค่าจ่ายรวมต่อเดือน · เส้นประ = ค่ากลาง · ▲/▼ = สูง/ต่ำกว่าเดือนอื่นผิดปกติ ('+(c.n>=5?'เกณฑ์: เบี่ยงเบนมากเมื่อเทียบเดือนอื่น และต่างจากค่ากลางอย่างน้อย 25%':'เกณฑ์: ต่างจากค่าเฉลี่ยเดือนอื่นอย่างน้อย 35% เพราะข้อมูลยังน้อย')+')';
+    anomalyChart($('#tr-an'),rows,c,R);
+    const fl=R.map((r,k)=>({r:r,k:k})).filter(o=>o.r.flag);
+    $('#tr-an-l').innerHTML=fl.length?fl.map(o=>{const ct=contributors(rows,c,o.k);return '<div class="tr-ev '+(o.r.flag>0?'hi':'lo')+'"><b>'+esc(ALLM[c.ix[o.k]].full+' '+ALLM[c.ix[o.k]].year)+'</b> จ่าย '+baht(o.r.v)+' บาท ('+(o.r.dev>=0?'+':'−')+pct(Math.abs(o.r.dev),0)+' เทียบเดือนอื่น)<br><small>รายการที่ทำให้เปลี่ยนมากที่สุด: '+ct.map(z=>esc(z.x.label)+' ('+(z.d>=0?'+':'−')+baht(Math.abs(z.d))+')').join(' · ')+'</small></div>';}).join(''):'<div class="hp-empty">ไม่พบเดือนที่ผิดปกติ · การจ่ายรายเดือนอยู่ในช่วงใกล้เคียงกัน</div>';}
+  // 2 movers
+  if(!mv){need('#tr-mv','ต้องมีข้อมูลอย่างน้อย 2 เดือน');$('#tr-mv-n').textContent='';$('#tr-rk').innerHTML='';}
+  else{$('#tr-mv-n').textContent='เทียบ '+ALLM[mv.last].full+' กับค่าเฉลี่ย '+mv.prev.length+' เดือนก่อนหน้า · แสดงเฉพาะที่เปลี่ยน ≥ 30% และมูลค่าเปลี่ยน ≥ '+baht(mv.minV)+' บาท';
+    const mk=(o,u)=>({label:(u?'▲ ':'▼ ')+o.x.label,val:Math.abs(o.dv),attr:'data-act="detail" data-id="'+o.x.id+'"',warn:!!DQ[o.x.id],color:u?'var(--color-warn)':'var(--pl2)',vtxt:(o.pc==null?'ใหม่':(o.pc>=0?'+':'−')+pct(Math.abs(o.pc),0))+' · '+(o.dv>=0?'+':'−')+baht(Math.abs(o.dv)),tip:o.x.label+'\nเดือนล่าสุด '+nf(o.cur)+' '+o.x.unit+'\nเฉลี่ยก่อนหน้า '+nf(Math.round(o.base))+' '+o.x.unit+'\nมูลค่าจ่ายเปลี่ยน '+(o.dv>=0?'+':'−')+baht(Math.abs(o.dv))+' บาท'});
+    $('#tr-mv').innerHTML='<div class="tr-two"><div><h3 class="tr-h">ใช้เพิ่มขึ้นเร็ว</h3>'+hbarsHtml(mv.up.map(o=>mk(o,1)))+'</div><div><h3 class="tr-h">ใช้ลดลงเร็ว</h3>'+hbarsHtml(mv.dn.map(o=>mk(o,0)))+'</div></div>';
+    $('#tr-rk').innerHTML=trTbl(['อันดับ','รายการ','มูลค่าจ่ายเดือนล่าสุด','เปลี่ยนแปลง'],mv.top.map(t=>{const mvd=t.p==null?'<span class="b-ok hp-badge">ใหม่</span>':t.p>t.r?'<b class="rk-up">▲ '+(t.p-t.r)+'</b> <small class="hp-mut">(จากอันดับ '+t.p+')</small>':t.p<t.r?'<b class="rk-dn">▼ '+(t.r-t.p)+'</b> <small class="hp-mut">(จากอันดับ '+t.p+')</small>':'<span class="hp-mut">คงเดิม</span>';
+      return '<tr data-act="detail" data-id="'+t.o.x.id+'"><td>'+t.r+'</td><td class="nm">'+pcd(t.o.x)+esc(t.o.x.label)+'</td><td>'+baht(t.o.cv)+'</td><td>'+mvd+'</td></tr>';}).join(''));}
+  // 3 slowing
+  if(!sl){need('#tr-sl','ต้องมีข้อมูลอย่างน้อย 3 เดือน');$('#tr-sl-n').textContent='';}
+  else{$('#tr-sl-n').textContent='ยาที่จ่ายลดลงต่อเนื่อง 3 เดือน (เดือนล่าสุดเหลือ ≤ 60% ของ 2 เดือนก่อน) และถ้าจ่ายในอัตราเดือนล่าสุด จะพอใช้นานกว่า '+TH.over+' วัน แต่ตอนนี้ยังไม่ถูกจัดเป็นล้นสต็อก (ค่าเฉลี่ย 3 เดือนยังสูงอยู่) · ควรชะลอการสั่งก่อนจะล้น';
+    $('#tr-sl').innerHTML=sl.length?trTbl(['รายการ','จ่าย 3 เดือนล่าสุด','พอใช้ (เฉลี่ย 3 เดือน)','พอใช้ (อัตราเดือนล่าสุด)','มูลค่าคงเหลือ'],sl.slice(0,15).map(o=>'<tr data-act="detail" data-id="'+o.x.id+'"><td class="nm">'+pcd(o.x)+esc(o.x.label)+dqBadge(o.x)+'<small>หน่วย '+esc(o.x.unit)+'</small></td><td>'+o.d.map(nf).join(' → ')+'</td><td>'+fdosH(o.dos3)+'</td><td>'+(isFinite(o.dosL)?'<b class="up-bad">'+nf(Math.round(o.dosL))+' วัน</b>':'<b class="up-bad">หยุดจ่าย</b>')+'</td><td>'+baht(o.bv)+'</td></tr>').join(''))+(sl.length>15?'<p class="hp-note">แสดง 15 จาก '+sl.length+' รายการ (เรียงตามมูลค่า)</p>':''):'<div class="hp-empty">ไม่พบยาที่จ่ายลดลงต่อเนื่องจนเสี่ยงล้นสต็อก</div>';}
+  // 4 forecast
+  const e=fc.e,Ls=fc.L,k0=e.getFullYear()*12+e.getMonth();
+  $('#tr-fc-n').textContent='คำนวณจากยอดคงเหลือสิ้นเดือน '+ALLM[c.gE].full+' ÷ อัตราจ่ายเฉลี่ย '+rateWin().k+' เดือนล่าสุด โดยสมมติว่ายังไม่มีของเข้า และจ่ายเท่าเดิม · เป็นเพียงประมาณการ'+(rateWin().k<3?' (ข้อมูลยังไม่ครบ 3 เดือน อาจคลาดเคลื่อนมาก)':'');
+  const B=[];for(let j=1;j<=6;j++){const key=k0+j,d=new Date(Math.floor(key/12),key%12,1);B.push({key:key,lab:thMon(d),L:Ls.filter(o=>o.key===key)});}
+  const within=Ls.filter(o=>o.key<=k0).length,later=Ls.filter(o=>o.key>k0+6);
+  const mxn=Math.max(1,d3.max(B,b=>b.L.length));
+  $('#tr-fc').innerHTML='<div class="fc-grid">'+B.map(b=>'<div class="fc-m'+(b.L.length?'':' z')+'"><span class="fc-l">'+esc(b.lab)+'</span><span class="fc-bar"><i style="height:'+(b.L.length/mxn*100).toFixed(0)+'%"></i></span><b>'+nf(b.L.length)+'</b><small>รายการ</small></div>').join('')+'</div>'+
+   '<p class="hp-sum2">คาดว่ายาจะหมดภายใน 6 เดือนข้างหน้า <b>'+nf(B.reduce((a,b)=>a+b.L.length,0))+' รายการ</b> (ในเดือนที่ข้อมูลสิ้นสุดอีก '+nf(within)+' รายการ) · เกิน 6 เดือน '+nf(later.length)+' รายการ</p>'+
+   trTbl(['คาดว่าหมดเดือน','รายการ (เรียงตามวันที่พอใช้น้อย → มาก)'],B.filter(b=>b.L.length).map(b=>'<tr><td><b>'+esc(b.lab)+'</b><br><small class="hp-mut">'+nf(b.L.length)+' รายการ</small></td><td class="fc-items">'+b.L.sort((x,y)=>x.dos-y.dos).slice(0,6).map(o=>'<button class="hp-chip" data-act="detail" data-id="'+o.x.id+'">'+esc(o.x.label)+' <small>'+nf(Math.round(o.dos))+' วัน</small></button>').join('')+(b.L.length>6?' <small class="hp-mut">และอีก '+(b.L.length-6)+' รายการ</small>':'')+'</td></tr>').join(''));
 }
 
 /* ---- morph: แท่ง/แผนที่ treemap เลื่อนไหลจากค่าเดิมไปค่าใหม่เมื่อกรอง/กดเลือก ---- */

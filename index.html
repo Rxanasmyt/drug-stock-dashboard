@@ -670,6 +670,35 @@
 .hp-tabs button[aria-selected=true]{background:linear-gradient(135deg,#007f79,#0aa098)}
 @media (prefers-color-scheme:dark){.hp-hn{background:linear-gradient(145deg,color-mix(in srgb,var(--pl0) 18%,var(--color-panel)),color-mix(in srgb,var(--pl1) 10%,var(--color-panel)))}.hp-tabs button[aria-selected=true]{background:linear-gradient(135deg,#2fb8b0,#6aa3e0)}}
 .hp-seg button[aria-pressed=true]{background:color-mix(in srgb,var(--pl0) 20%,var(--color-bg));box-shadow:inset 0 -3px 0 var(--pl0)}
+
+/* v15 */
+.rk-up{color:var(--pl0)}.rk-dn{color:var(--pl1)}
+.hp-dqn{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-radius:10px;border:1px solid color-mix(in srgb,var(--color-warn) 40%,var(--color-border-line));background:color-mix(in srgb,var(--color-warn) 9%,var(--color-panel));font-size:.88rem;line-height:1.6}
+.hp-dqn .ic{flex:none;display:grid;place-items:center;width:1.6em;height:1.6em;border-radius:50%;background:var(--color-warn);color:#fff;font-weight:700}
+.hp-lk{border:0;background:none;padding:0;color:var(--pl0);font-weight:600;text-decoration:underline;cursor:pointer}
+.sk-split{display:flex;height:16px;border-radius:8px;overflow:hidden;gap:2px;margin:6px 0}
+.sk-split i{display:block;min-width:2px}
+#ov-sunk .hp-hbs{margin-top:10px}
+.cmp-r{display:grid;grid-template-columns:minmax(110px,30%) 1fr;gap:4px 12px;align-items:center;margin:8px 0}
+.cmp-t{font-size:.84rem;color:var(--color-fg-muted)}
+.cmp-bar{display:flex;height:26px;border-radius:7px;overflow:hidden;gap:2px}
+.cmp-bar i{display:flex;align-items:center;justify-content:center;min-width:0;color:#fff;font-style:normal}
+.cmp-bar b{font-size:.78rem;font-weight:700}
+.cmp-v,.cmp-d{grid-column:2;font-size:.78rem;color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.cmp-d{font-size:.9rem;color:var(--color-fg)}
+.tr-two{display:grid;grid-template-columns:1fr 1fr;gap:var(--cds-gap-lg)}
+@media(max-width:760px){.tr-two{grid-template-columns:1fr}}
+.tr-h{margin:0 0 6px;font-size:.95rem}
+.tr-ev{padding:10px 14px;margin-top:8px;border-radius:10px;border-left:4px solid var(--color-warn);background:color-mix(in srgb,var(--color-warn) 8%,var(--color-panel));font-size:.88rem;line-height:1.6}
+.tr-ev.lo{border-left-color:var(--pl2);background:color-mix(in srgb,var(--pl2) 8%,var(--color-panel))}
+.fc-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:8px 0}
+.fc-m{display:flex;flex-direction:column;align-items:center;gap:2px;font-variant-numeric:tabular-nums}
+.fc-m .fc-bar{display:flex;align-items:flex-end;width:100%;height:80px;border-radius:8px;background:color-mix(in srgb,var(--color-fg) 5%,transparent);overflow:hidden}
+.fc-m .fc-bar i{display:block;width:100%;background:linear-gradient(180deg,var(--color-warn),color-mix(in srgb,var(--color-warn) 55%,transparent));transition:height .8s cubic-bezier(.2,.8,.2,1)}
+.fc-m.z .fc-bar i{background:transparent}
+.fc-l{font-size:.78rem;color:var(--color-fg-muted)}
+.fc-items .hp-chip{margin:2px 4px 2px 0}
+@media(max-width:560px){.fc-grid{grid-template-columns:repeat(3,1fr)}}
 </style>
 <div id="hp" class="hp">
   <header class="hp-hero">
@@ -686,6 +715,7 @@
   <nav class="hp-tabs" id="hp-tabs" role="tablist" aria-label="หัวข้อ">
     <button role="tab" data-act="tab" data-t="overview">ภาพรวม</button>
     <button role="tab" data-act="tab" data-t="order">ต้องสั่งซื้อ</button>
+    <button role="tab" data-act="tab" data-t="trend">แนวโน้ม</button>
     <button role="tab" data-act="tab" data-t="cats">แยกตามหมวด</button>
     <button role="tab" data-act="tab" data-t="groups">เทียบกลุ่มโรค</button>
     <button role="tab" data-act="tab" data-t="abc">วิเคราะห์ ABC</button>
@@ -731,6 +761,8 @@
     <div id="ov-glance" class="hp-glance"></div>
     <div class="hp-kpis" id="ov-kpis"></div>
     <div class="hp-kpis" id="ov-kpis2"></div>
+    <div id="ov-dq" hidden></div>
+    <div class="hp-grid w2"><div class="hp-card" id="ov-sunk"></div><div class="hp-card" id="ov-cmp"></div></div>
     <div class="hp-grid w2">
       <div class="hp-card"><h2 id="ov-wf-h">การไหลของสต็อก</h2><p class="hp-note" id="ov-wf-n"></p><div class="hp-svg" id="ov-wf" style="min-height:190px"></div></div>
       <div class="hp-card"><h2 id="ov-trend-h">รายเดือน</h2><p class="hp-note" id="ov-trend-n"></p><div class="hp-svg" id="ov-trend" style="min-height:260px"></div><div class="hp-lg" id="ov-trend-lg"></div></div>
@@ -748,6 +780,15 @@
     <div id="od-head"></div>
     <div class="hp-card"><h2>รายการที่ควรสั่งซื้อ</h2><p class="hp-note" id="od-n"></p><div class="hp-inl hp-odctl" id="od-ctl"></div><div class="hp-tw st" id="od-tbl"></div></div>
     <div class="hp-card"><h2>ชะลอการสั่ง: ล้นสต็อกและไม่เคลื่อนไหว (มูลค่าคงเหลือสูงสุด)</h2><p class="hp-note">รายการเหล่านี้มีของเกินความต้องการหรือไม่มีการจ่ายในช่วง ควรชะลอการสั่งและตรวจวันหมดอายุ · กดเพื่อดูรายเดือน</p><div id="od-over"></div></div>
+  </section>
+
+  <section class="hp-sec" id="hp-trend" hidden>
+    <div id="tr-head"></div>
+    <div class="hp-card"><h2>มูลค่าจ่ายรายเดือนและเดือนที่ผิดปกติ</h2><p class="hp-note" id="tr-an-n"></p><div class="hp-svg" id="tr-an" style="min-height:200px"></div><div id="tr-an-l"></div></div>
+    <div class="hp-card"><h2>ยาที่ใช้เพิ่มขึ้นหรือลดลงเร็ว</h2><p class="hp-note" id="tr-mv-n"></p><div id="tr-mv"></div></div>
+    <div class="hp-card"><h2>10 อันดับยาที่จ่ายมากที่สุด และการเปลี่ยนอันดับ</h2><div id="tr-rk"></div></div>
+    <div class="hp-card"><h2>ยาที่จ่ายลดลงเรื่อย ๆ เสี่ยงจะล้นสต็อก</h2><p class="hp-note" id="tr-sl-n"></p><div id="tr-sl"></div></div>
+    <div class="hp-card"><h2>ประมาณการเดือนที่ยาจะหมด</h2><p class="hp-note" id="tr-fc-n"></p><div id="tr-fc"></div></div>
   </section>
 
   <section class="hp-sec" id="hp-cats" hidden>
