@@ -589,16 +589,51 @@
 .fx-pills{transition:opacity 1.5s}.fx-pills.off{opacity:0}
 #fx-top{position:fixed;right:14px;bottom:16px;z-index:40;width:44px;height:44px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--pl0),var(--pl2));color:#fff;font-size:1.2rem;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 @media print{#fx-top,.gl{display:none!important}}
+
+/* ---- v11: ธีมทางการระดับโรงพยาบาล (สงบ น่าเชื่อถือ) ---- */
+.hp{--pl0:#1f5fa8;--pl1:#c0553f;--pl2:#0f8b8d;--pl3:#b98a1e;--pl4:#5b6fa8;--pl5:#3f8f5f;--pl6:#a24a6d;--pl7:#5f7a8c;--hp-navy:#17407a;background:none}
+@media (prefers-color-scheme:dark){.hp{--pl0:#5b9be0;--pl1:#e0836c;--pl2:#3fb5b6;--pl3:#d8aa45;--pl4:#8a9bd0;--hp-navy:#6fa5e8}}
+.hp-hero{background:var(--color-panel);border:1px solid var(--color-border-line);border-top:4px solid var(--hp-navy);border-radius:10px;box-shadow:none}
+.hp-hero::before,.hp-hero::after{display:none!important}
+.hp-hero h1{background:none;-webkit-background-clip:initial;background-clip:initial;color:var(--color-fg);font-weight:700;font-size:clamp(1.25rem,2.6vw,1.75rem);letter-spacing:0;animation:none!important}
+.hp-eyebrow::before{background:var(--hp-navy)}
+.hp-mast{display:flex;align-items:center;gap:12px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--color-border-line)}
+.hp-crest{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--hp-navy);color:#fff;font-size:1.35rem;font-weight:700;flex:none}
+.hp-mast b{display:block;font-size:1.05rem}.hp-mast small{color:var(--color-fg-muted);font-size:.8rem}
+.fx-pills{display:none!important}
+.hp-kpi,.hp-card{border-radius:8px}
+.hp-kpi:nth-child(n){background-color:var(--color-panel)}
+.hp-kpi .n{background:none;-webkit-background-clip:initial;background-clip:initial;color:var(--color-fg)}
+.hp-kpi::before{display:none!important}
+@media(hover:hover) and (pointer:fine){#hp .hp-kpi:hover{transform:none!important;box-shadow:var(--hp-sh)}#hp .hp-kpi:hover,#hp .hp-card:hover{background-image:none}}
+.hp-tabs{background:var(--color-panel);border-radius:10px;padding:3px}
+.hp-tabs button{border-radius:8px}
+.hp-tabs button[aria-selected=true]{background:var(--hp-navy);color:#fff;box-shadow:none}
+.hp-seg button[aria-pressed=true]{background:color-mix(in srgb,var(--hp-navy) 14%,var(--color-bg));box-shadow:inset 0 -2px 0 var(--hp-navy)}
+.hp-card>h2::before,.hp-card>.hp-inl>h2::before,.hp-card:nth-of-type(3n+2)>h2::before,.hp-card:nth-of-type(3n+3)>h2::before{background:var(--hp-navy);width:3px}
+.fx-prog{background:var(--hp-navy)!important;height:2px}
+#fx-top{background:var(--hp-navy)}
+.hp-official{margin:.2rem 0 .5rem;font-weight:600;color:var(--color-fg)}
+.hp-printhead,.hp-sign{display:none}
+@media print{
+.hp-printhead{display:block;text-align:right;padding:0 0 6px;font-size:.8rem;color:#444}
+.hp-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:28px;text-align:center;font-size:.85rem;break-inside:avoid}
+.hp-sign span{display:block;height:46px;border-bottom:1px solid #000;margin-bottom:6px}
+.hp-hero{border-top-color:#17407a}
+}
+@media (prefers-color-scheme:dark){.hp-tabs button[aria-selected=true],.hp-crest,#fx-top{color:#0b1b2e}}
 </style>
 <div id="hp" class="hp">
   <header class="hp-hero">
     <div>
-      <span class="hp-eyebrow">เภสัชกรรม โรงพยาบาลกรงปินัง จ.ยะลา · คลังยาและเวชภัณฑ์ · ปีงบประมาณ <span id="hp-fy-e"></span></span>
-      <h1>Dashboard คลังยาและเวชภัณฑ์: ยอดยกมา รับ จ่าย คงเหลือ ปีงบประมาณ <span id="hp-fy-t"></span></h1>
+      <div class="hp-mast"><span class="hp-crest" aria-hidden="true">℞</span><div><b>โรงพยาบาลกรงปินัง</b><small>กลุ่มงานเภสัชกรรม · จังหวัดยะลา</small></div></div>
+      <span class="hp-eyebrow">รายงานสถานะคลังยาและเวชภัณฑ์ · ปีงบประมาณ <span id="hp-fy-e"></span></span>
+      <h1>รายงานสถานะคลังยาและเวชภัณฑ์ ปีงบประมาณ <span id="hp-fy-t"></span></h1>
       <p class="hp-sub" id="hp-sub"></p>
     </div>
     <div class="hp-hn" id="hp-hero-n"></div>
   </header>
+  <div class="hp-printhead" id="hp-printhead" aria-hidden="true"><span>พิมพ์เมื่อ <span id="hp-pdate"></span></span></div>
 
   <nav class="hp-tabs" id="hp-tabs" role="tablist" aria-label="หัวข้อ">
     <button role="tab" data-act="tab" data-t="overview">ภาพรวม</button>
@@ -712,14 +747,14 @@
     <div id="al-body" class="hp-sec"></div>
   </section>
 
-  <footer class="hp-foot" id="hp-foot"><details id="hp-methods"><summary>ที่มา วิธีคำนวณ และข้อควรระวัง (กดเพื่อดู)</summary><p><b>แหล่งข้อมูล</b> รายงานสรุปยอดคงเหลือเวชภัณฑ์ (ยกมา/รับ/จ่าย/คงเหลือ) รายเดือนจากระบบคลังโรงพยาบาลกรงปินัง · <b>ข้อมูลล่าสุด:</b> <span id="hp-asof"></span> · dashboard แสดงตามรายงานโดยไม่แก้ตัวเลข ยกเว้นสวิตช์ "ไม่นับรายการราคาน่าสงสัย" ที่ตัดรายการออกตามที่เลือก</p><p><b>ข้อเสนอการสั่งซื้อ</b> ปริมาณแนะนำ = (อัตราจ่ายเฉลี่ยต่อวัน × จำนวนวันเป้าหมาย) − คงเหลือ · อัตราจ่ายใช้ค่าเฉลี่ยสูงสุด 3 เดือนล่าสุดที่มีข้อมูล · ระดับ: เร่งด่วน = คงเหลือ 0 แต่ยังมีการจ่าย, ใกล้หมด = พอใช้ไม่ถึง <span data-th="low">30</span> วัน, วางแผน = พอใช้ไม่ถึงจำนวนวันเป้าหมาย · เป็นข้อเสนอให้เภสัชกรพิจารณา ไม่ใช่คำสั่งซื้ออัตโนมัติ</p><p><b>ป้ายตรวจข้อมูล</b> ติดเมื่อราคาต่อหน่วย (มูลค่า ÷ ปริมาณ) ตั้งแต่ 200 บาท และสูงกว่ามัธยฐานของรายการหน่วยเดียวกันในหมวดเดียวกันตั้งแต่ 30 เท่า (ยกเว้นรายการที่ผู้ดูแลยืนยันแล้วว่าราคาจริง) · ใช้เป็นสัญญาณให้ตรวจกับต้นฉบับ</p><div class="hp-note th-form"><b>ปรับเกณฑ์สต็อก</b> (เก็บในเครื่องนี้) · ใกล้หมดเมื่อพอใช้น้อยกว่า <input type="number" id="th-low" min="1" max="365" step="1" value="30" aria-label="เกณฑ์ใกล้หมด วัน"> วัน · ล้นสต็อกเมื่อพอใช้มากกว่า <input type="number" id="th-over" min="2" max="1000" step="10" value="180" aria-label="เกณฑ์ล้นสต็อก วัน"> วัน <button class="hp-btn" id="th-reset" type="button">คืนค่าเริ่มต้น</button></div></details>
+  <footer class="hp-foot" id="hp-foot"><p class="hp-official">จัดทำโดย กลุ่มงานเภสัชกรรม โรงพยาบาลกรงปินัง จังหวัดยะลา · ข้อมูลจากรายงานคลังเวชภัณฑ์ของโรงพยาบาล · เพื่อประกอบการบริหารจัดการคลังยา</p><details id="hp-methods"><summary>ที่มา วิธีคำนวณ และข้อควรระวัง (กดเพื่อดู)</summary><p><b>แหล่งข้อมูล</b> รายงานสรุปยอดคงเหลือเวชภัณฑ์ (ยกมา/รับ/จ่าย/คงเหลือ) รายเดือนจากระบบคลังโรงพยาบาลกรงปินัง · <b>ข้อมูลล่าสุด:</b> <span id="hp-asof"></span> · dashboard แสดงตามรายงานโดยไม่แก้ตัวเลข ยกเว้นสวิตช์ "ไม่นับรายการราคาน่าสงสัย" ที่ตัดรายการออกตามที่เลือก</p><p><b>ข้อเสนอการสั่งซื้อ</b> ปริมาณแนะนำ = (อัตราจ่ายเฉลี่ยต่อวัน × จำนวนวันเป้าหมาย) − คงเหลือ · อัตราจ่ายใช้ค่าเฉลี่ยสูงสุด 3 เดือนล่าสุดที่มีข้อมูล · ระดับ: เร่งด่วน = คงเหลือ 0 แต่ยังมีการจ่าย, ใกล้หมด = พอใช้ไม่ถึง <span data-th="low">30</span> วัน, วางแผน = พอใช้ไม่ถึงจำนวนวันเป้าหมาย · เป็นข้อเสนอให้เภสัชกรพิจารณา ไม่ใช่คำสั่งซื้ออัตโนมัติ</p><p><b>ป้ายตรวจข้อมูล</b> ติดเมื่อราคาต่อหน่วย (มูลค่า ÷ ปริมาณ) ตั้งแต่ 200 บาท และสูงกว่ามัธยฐานของรายการหน่วยเดียวกันในหมวดเดียวกันตั้งแต่ 30 เท่า (ยกเว้นรายการที่ผู้ดูแลยืนยันแล้วว่าราคาจริง) · ใช้เป็นสัญญาณให้ตรวจกับต้นฉบับ</p><div class="hp-note th-form"><b>ปรับเกณฑ์สต็อก</b> (เก็บในเครื่องนี้) · ใกล้หมดเมื่อพอใช้น้อยกว่า <input type="number" id="th-low" min="1" max="365" step="1" value="30" aria-label="เกณฑ์ใกล้หมด วัน"> วัน · ล้นสต็อกเมื่อพอใช้มากกว่า <input type="number" id="th-over" min="2" max="1000" step="10" value="180" aria-label="เกณฑ์ล้นสต็อก วัน"> วัน <button class="hp-btn" id="th-reset" type="button">คืนค่าเริ่มต้น</button></div></details>
     <p><b>นิยาม</b> ยอดยกมา = คงเหลือต้นช่วง · รับ = รับเข้าคลังในช่วง · จ่าย = จ่ายออกในช่วง · คงเหลือ = ยอดปลายช่วง (ยกมา + รับ − จ่าย) มูลค่าเป็นบาท ปริมาณเป็นหน่วยนับของแต่ละรายการ (เม็ด ขวด แอมพูล ฯลฯ) จึงรวมข้ามหน่วยไม่ได้ ระบบแสดงปริมาณทีละหน่วยนับ</p>
     <p><b>การรวมช่วงเวลา</b> เมื่อเลือกหลายเดือน: ยกมา = ยกมาของเดือนแรก · รับ/จ่าย = ผลรวมทุกเดือน · คงเหลือ = คงเหลือสิ้นเดือนสุดท้าย (ไม่ใช่ผลรวม) · วันที่สต็อกพอใช้ = คงเหลือสิ้นช่วง ÷ อัตราจ่ายต่อวันเฉลี่ย 3 เดือนล่าสุดที่มีข้อมูล (มีเดือนเดียวใช้ 1 เดือน) · อัตราหมุนเวียน = จ่าย ÷ สต็อกเฉลี่ย (ยกมา+คงเหลือ)/2 ปรับเป็นต่อปี ค่าเหล่านี้เป็นตัวชี้วัดเบื้องต้น ยิ่งมีหลายเดือนยิ่งน่าเชื่อถือ</p>
     <p><b>สถานะรายการ</b> หมดสต็อก = คงเหลือ 0 แต่มีการจ่าย · ใกล้หมด = พอใช้ไม่ถึง <span data-th="low">30</span> วัน · ล้นสต็อก = พอใช้เกิน <span data-th="over">180</span> วัน · ไม่เคลื่อนไหว = มีของแต่ไม่มีการจ่ายในช่วง</p>
     <p><b>ABC</b> จัดชั้นตามมูลค่าที่จ่ายในช่วงที่เลือก เรียงมากไปน้อย: A = รายการที่ทำให้มูลค่าจ่ายสะสมถึง 80% · B = 80–95% · C = ที่เหลือ · ไม่จ่าย = ไม่มีการจ่ายในช่วง</p>
     <p><b>มูลค่า</b> คิดเป็นราคาต้นทุน ตามคอลัมน์มูลค่าในรายงานคลัง (ไม่ใช่ราคาขาย) · <b>จำนวนรายการ</b> นับเฉพาะรายการที่มีสต็อกหรือเคลื่อนไหวในช่วงที่เลือก (แสดง “เคลื่อนไหว / ทั้งหมด”) · รายการที่ติดป้าย “ตรวจข้อมูล” มีราคาต่อหน่วยสูงผิดปกติเทียบกับรายการหน่วยเดียวกัน ควรตรวจหน่วยนับ/ขนาดบรรจุกับต้นฉบับ</p>
     <p><b>หมวดสินค้า</b> ตามรหัสหมวดในรายงานคลัง (ยาในบัญชียาหลักแห่งชาติ, ยานอกบัญชี, วัสดุเภสัชกรรม, ยาสนับสนุน, เวชภัณฑ์มิใช่ยา) · <b>กลุ่มโรค</b> จัดจากชื่อยาตามกฎเดียวกับ dashboard การใช้ยา ยาใช้ร่วมหลายโรคและวัสดุทางการแพทย์ควรให้เภสัชกรทบทวน <span id="ft-last"></span></p>
-  </footer>
+  <div class="hp-sign" aria-hidden="true"><div><span></span>ผู้จัดทำ<br>(...............................)<br>วันที่ ........./........./.........</div><div><span></span>ผู้ตรวจสอบ<br>(...............................)<br>วันที่ ........./........./.........</div><div><span></span>ผู้อนุมัติ<br>(...............................)<br>วันที่ ........./........./.........</div></div></footer>
   <div class="hp-tip" id="hp-tip" hidden></div>
 </div>
 <script src="app.js"></script>

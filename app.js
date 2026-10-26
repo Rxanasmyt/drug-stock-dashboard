@@ -886,7 +886,9 @@ function fxPass(){
 let TH={low:30,over:180};
 try{const t=JSON.parse(localStorage.getItem('stock-th')||'null');if(t&&t.low>=1&&t.low<=365&&t.over>t.low&&t.over<=1000)TH={low:Math.round(t.low),over:Math.round(t.over)};}catch(e){}
 function tabBadge(){const b=$('#hp-tabs button[data-t=order]');if(!b)return;let n=0;try{filt({pc:1,view:1}).forEach(x=>{const k=stat(x).k;if(k==='out'||k==='low')n++;});}catch(e){}let t=b.querySelector('.tb');if(!t){t=document.createElement('b');t.className='tb';t.setAttribute('aria-hidden','true');b.appendChild(t);}t.textContent=n>99?'99+':String(n);t.hidden=!n;b.setAttribute('aria-label','สั่งซื้อวันนี้ '+n+' รายการ');}
-function thSync(){tabBadge();$$('[data-th]').forEach(e=>{e.textContent=TH[e.dataset.th];});const a=$('#th-low'),b=$('#th-over');if(a&&document.activeElement!==a)a.value=TH.low;if(b&&document.activeElement!==b)b.value=TH.over;}
+function pdate(){const e=$('#hp-pdate');if(e)try{e.textContent=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});}catch(x){}}
+window.addEventListener('beforeprint',pdate);
+function thSync(){pdate();tabBadge();$$('[data-th]').forEach(e=>{e.textContent=TH[e.dataset.th];});const a=$('#th-low'),b=$('#th-over');if(a&&document.activeElement!==a)a.value=TH.low;if(b&&document.activeElement!==b)b.value=TH.over;}
 document.addEventListener('change',e=>{const id=e.target.id;if(id!=='th-low'&&id!=='th-over')return;
   let lo=+$('#th-low').value,ov=+$('#th-over').value;if(!(lo>=1&&lo<=365))lo=30;if(!(ov>lo&&ov<=1000))ov=Math.max(lo+1,180);
   TH={low:Math.round(lo),over:Math.round(ov)};try{localStorage.setItem('stock-th',JSON.stringify(TH));}catch(x){}anim='data';go();});
