@@ -15,7 +15,8 @@ let OFF=0,ABCF='A';
 let ALLM=[],FYS=[],MON=[],AV=12,D=[],CATS=[],SYMS=[],PC=[],catBy={},symBy={},pcBy={},byId={},UNITS=[],ready=false,SIG='';
 let anim='tab',animNow=null,animT=null;
 const PREVK={};
-const reduced=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+let MOTION_OFF=false;try{MOTION_OFF=localStorage.getItem('stock-motion')==='off';}catch(e){}
+const reduced=()=>MOTION_OFF||!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
 const PAL=['var(--pl0)','var(--pl1)','var(--pl2)','var(--pl3)','var(--pl4)','var(--pl5)','var(--pl6)','var(--pl7)'];
 const colors=()=>PAL;
 const col=i=>colors()[i%Math.max(1,colors().length)]||'var(--color-fg)';
@@ -144,16 +145,19 @@ function spark(x){
   const up=v[v.length-1]>=v[0];
   return '<svg class="hp-sp" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'"><path d="'+v.map((y,i)=>(i?'L':'M')+sx(i).toFixed(1)+' '+sy(y).toFixed(1)).join('')+'" fill="none" stroke="'+(up?fcol('r'):fcol('d'))+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="'+sx(v.length-1).toFixed(1)+'" cy="'+sy(v[v.length-1]).toFixed(1)+'" r="2.4" fill="'+(up?fcol('r'):fcol('d'))+'"/></svg>';
 }
+const tmKind=ds=>(ds==null||!isFinite(ds))?'':ds<TH.low?'low':ds>TH.over?'over':'ok';
+const tmGl=ds=>{const k=tmKind(ds);return k==='low'?'✕ ':k==='over'?'! ':k==='ok'?'✓ ':'';};
+const tmOv=(ds,n,w,hh)=>{const k=tmKind(ds);return (k==='low'||k==='over')?'<rect x="'+n.x0+'" y="'+n.y0+'" width="'+w+'" height="'+hh+'" rx="8" fill="url(#'+(k==='low'?'tmLow':'tmOver')+')" pointer-events="none"/>':'';};
 function treemap(host,gs){
   const W=Math.max(300,host.clientWidth||600),H=W<520?300:340;
   const data=gs.filter(o=>o.a.b>0);if(!data.length){host.innerHTML='<div class="hp-empty">ไม่มียอดคงเหลือในตัวกรองนี้</div>';return;}
   const root=d3.hierarchy({children:data}).sum(d=>d.a?d.a.b:0).sort((p,q)=>q.value-p.value);
   d3.treemap().size([W,H]).paddingInner(3).round(true)(root);
   const zc=o=>{const ds=dos(o.a);if(ds==null||!isFinite(ds))return '#7d8a99';return ds<TH.low?'var(--color-bad)':ds>TH.over?'var(--color-warn)':'var(--color-ok)';};
-  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="แผนที่สต็อกตามกลุ่ม ขนาด = มูลค่าคงเหลือ">';
+  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="แผนที่สต็อกตามกลุ่ม ขนาด = มูลค่าคงเหลือ">'+'<defs><pattern id="tmLow" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="3.5" cy="3.5" r="1.3" fill="#fff" fill-opacity=".55"/></pattern><pattern id="tmOver" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="8" fill="#fff" fill-opacity=".26"/></pattern></defs>';
   root.leaves().forEach((n,i)=>{const o=n.data,w=n.x1-n.x0,hh=n.y1-n.y0,ds=dos(o.a);
-    s+='<g class="hp-tmg" style="--i:'+i+'" data-act="view" data-k="'+esc(o.g.code)+'" data-tip="'+esc(o.g.name+'\nคงเหลือ '+fmtM(o.a.b)+' '+unitTxt()+'\nจ่าย '+fmtM(o.a.d)+'\nวันที่พอใช้ '+fdos(ds))+'" style="cursor:pointer"><rect x="'+n.x0+'" y="'+n.y0+'" width="'+w+'" height="'+hh+'" rx="8" style="fill:'+zc(o)+';opacity:.82"'+(isSupG(o.g)?' stroke="var(--color-fg)" stroke-dasharray="4 3" fill-opacity=".9"':'')+'/>';
-    if(w>64&&hh>34)s+='<text x="'+(n.x0+8)+'" y="'+(n.y0+19)+'" class="hp-tml">'+esc(trunc(o.g.short,Math.max(4,Math.floor(w/9))))+'</text><text x="'+(n.x0+8)+'" y="'+(n.y0+35)+'" class="hp-tmv">'+fmtM(o.a.b)+'</text>';
+    s+='<g class="hp-tmg" style="--i:'+i+'" data-act="view" data-k="'+esc(o.g.code)+'" data-tip="'+esc(o.g.name+'\nคงเหลือ '+fmtM(o.a.b)+' '+unitTxt()+'\nจ่าย '+fmtM(o.a.d)+'\nวันที่พอใช้ '+fdos(ds))+'" style="cursor:pointer"><rect x="'+n.x0+'" y="'+n.y0+'" width="'+w+'" height="'+hh+'" rx="8" style="fill:'+zc(o)+';opacity:.82"'+(isSupG(o.g)?' stroke="var(--color-fg)" stroke-dasharray="4 3" fill-opacity=".9"':'')+'/>'+tmOv(ds,n,w,hh);
+    if(w>64&&hh>34)s+='<text x="'+(n.x0+8)+'" y="'+(n.y0+19)+'" class="hp-tml">'+tmGl(ds)+esc(trunc(o.g.short,Math.max(4,Math.floor(w/9))))+'</text><text x="'+(n.x0+8)+'" y="'+(n.y0+35)+'" class="hp-tmv">'+fmtM(o.a.b)+'</text>';
     s+='</g>';});
   host.innerHTML=s+'</svg>';
 }
@@ -668,6 +672,7 @@ document.addEventListener('click',e=>{
   else if(a==='sort'){const k=el.dataset.k;S.sort=S.sort.k===k?{k:k,d:-S.sort.d}:{k:k,d:(k==='label'||k==='pcat'||k==='cat'||k==='unit'||k==='st')?1:-1};}
   else if(a==='more'){S.limit+=120;}
   else if(a==='replay'){}
+  else if(a==='motion'){MOTION_OFF=!MOTION_OFF;try{localStorage.setItem('stock-motion',MOTION_OFF?'off':'on');}catch(x){}motionSync();return;}
   else if(a==='excl'){S.excl=!S.excl;S.limit=80;}
   else if(a==='ordtgt'){S.tgt=+el.dataset.k;}
   else if(a==='ordall'){S.ordAll=!S.ordAll;}
@@ -888,7 +893,8 @@ try{const t=JSON.parse(localStorage.getItem('stock-th')||'null');if(t&&t.low>=1&
 function tabBadge(){const b=$('#hp-tabs button[data-t=order]');if(!b)return;let n=0;try{filt({pc:1,view:1}).forEach(x=>{const k=stat(x).k;if(k==='out'||k==='low')n++;});}catch(e){}let t=b.querySelector('.tb');if(!t){t=document.createElement('b');t.className='tb';t.setAttribute('aria-hidden','true');b.appendChild(t);}t.textContent=n>99?'99+':String(n);t.hidden=!n;b.setAttribute('aria-label','สั่งซื้อวันนี้ '+n+' รายการ');}
 function pdate(){const e=$('#hp-pdate');if(e)try{e.textContent=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});}catch(x){}}
 window.addEventListener('beforeprint',pdate);
-function thSync(){pdate();tabBadge();$$('[data-th]').forEach(e=>{e.textContent=TH[e.dataset.th];});const a=$('#th-low'),b=$('#th-over');if(a&&document.activeElement!==a)a.value=TH.low;if(b&&document.activeElement!==b)b.value=TH.over;}
+function motionSync(){const r=$('#hp');if(r)r.classList.toggle('nomo',MOTION_OFF);const b=$('#hp .hp-keyb [data-act=motion]');if(b){b.setAttribute('aria-pressed',String(!MOTION_OFF));b.textContent=MOTION_OFF?'การเคลื่อนไหว: ปิด':'การเคลื่อนไหว: เปิด';}}
+function thSync(){motionSync();pdate();tabBadge();$$('[data-th]').forEach(e=>{e.textContent=TH[e.dataset.th];});const a=$('#th-low'),b=$('#th-over');if(a&&document.activeElement!==a)a.value=TH.low;if(b&&document.activeElement!==b)b.value=TH.over;}
 document.addEventListener('change',e=>{const id=e.target.id;if(id!=='th-low'&&id!=='th-over')return;
   let lo=+$('#th-low').value,ov=+$('#th-over').value;if(!(lo>=1&&lo<=365))lo=30;if(!(ov>lo&&ov<=1000))ov=Math.max(lo+1,180);
   TH={low:Math.round(lo),over:Math.round(ov)};try{localStorage.setItem('stock-th',JSON.stringify(TH));}catch(x){}anim='data';go();});
