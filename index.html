@@ -553,6 +553,29 @@
 .sk-info{margin-top:8px;padding:8px 12px;border-radius:10px;font-size:.85rem;background:color-mix(in srgb,var(--hp-a) 10%,var(--color-panel));border:1px solid color-mix(in srgb,var(--hp-a) 30%,var(--color-border-line))}
 .hp-rib{cursor:pointer}
 #hp svg.has-sel .hp-rib:not(.sel){opacity:.12}#hp .hp-rib.sel{opacity:1;filter:brightness(1.12) saturate(1.25)}
+
+/* ---- สีสัน v8: พาเลตต์สดใส ใช้ได้ทั้งสว่าง/มืด (สีสถานะ เขียว/เหลือง/แดง คงเดิม) ---- */
+.hp{--pl0:#0aa39f;--pl1:#f46d57;--pl2:#3f7fe0;--pl3:#f0a81c;--pl4:#8b5cf6;--pl5:#2fb36f;--pl6:#e04a86;--pl7:#14a9d0}
+.hp{background:radial-gradient(60% 320px at 0% 0%,color-mix(in srgb,var(--pl0) 9%,transparent),transparent 70%),radial-gradient(55% 300px at 100% 0%,color-mix(in srgb,var(--pl4) 8%,transparent),transparent 70%)}
+.hp-hero{background:radial-gradient(90% 140% at 0% 0%,color-mix(in srgb,var(--pl0) 34%,var(--color-panel)) 0%,transparent 62%),radial-gradient(75% 130% at 100% 0%,color-mix(in srgb,var(--pl4) 24%,var(--color-panel)) 0%,transparent 62%),radial-gradient(70% 120% at 60% 120%,color-mix(in srgb,var(--pl1) 22%,var(--color-panel)) 0%,transparent 62%),var(--color-panel);border-color:color-mix(in srgb,var(--pl0) 30%,var(--color-border-line))}
+.hp-hero h1{background:linear-gradient(100deg,var(--color-fg) 20%,color-mix(in srgb,var(--pl0) 80%,var(--color-fg)) 55%,color-mix(in srgb,var(--pl4) 75%,var(--color-fg)));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hp-kpi:nth-child(6n+1){background-color:color-mix(in srgb,var(--pl0) 8%,var(--color-panel))}
+.hp-kpi:nth-child(6n+2){background-color:color-mix(in srgb,var(--pl1) 8%,var(--color-panel))}
+.hp-kpi:nth-child(6n+3){background-color:color-mix(in srgb,var(--pl2) 8%,var(--color-panel))}
+.hp-kpi:nth-child(6n+4){background-color:color-mix(in srgb,var(--pl3) 9%,var(--color-panel))}
+.hp-kpi:nth-child(6n+5){background-color:color-mix(in srgb,var(--pl4) 8%,var(--color-panel))}
+.hp-kpi:nth-child(6n+6){background-color:color-mix(in srgb,var(--pl7) 8%,var(--color-panel))}
+.hp-kpi:nth-child(6n+1)::after{background:linear-gradient(90deg,var(--pl0),transparent)}.hp-kpi:nth-child(6n+2)::after{background:linear-gradient(90deg,var(--pl1),transparent)}.hp-kpi:nth-child(6n+3)::after{background:linear-gradient(90deg,var(--pl2),transparent)}.hp-kpi:nth-child(6n+4)::after{background:linear-gradient(90deg,var(--pl3),transparent)}.hp-kpi:nth-child(6n+5)::after{background:linear-gradient(90deg,var(--pl4),transparent)}.hp-kpi:nth-child(6n+6)::after{background:linear-gradient(90deg,var(--pl7),transparent)}
+.hp-kpi .n{background:linear-gradient(100deg,var(--color-fg),color-mix(in srgb,var(--hp-a) 55%,var(--color-fg)));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hp-tabs{background:linear-gradient(90deg,color-mix(in srgb,var(--pl0) 12%,var(--color-bg)),color-mix(in srgb,var(--pl4) 12%,var(--color-bg)))}
+.hp-tabs button[aria-selected=true]{background:linear-gradient(135deg,color-mix(in srgb,var(--pl0) 74%,#000),color-mix(in srgb,color-mix(in srgb,var(--pl2) 70%,var(--pl4)) 74%,#000));color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--pl0) 40%,transparent)}
+.hp-seg button[aria-pressed=true]{background:linear-gradient(135deg,color-mix(in srgb,var(--pl0) 22%,var(--color-bg)),color-mix(in srgb,var(--pl4) 18%,var(--color-bg)));box-shadow:inset 0 -2px 0 var(--pl0)}
+.hp-card>h2::before,.hp-card>.hp-inl>h2::before{background:linear-gradient(180deg,var(--pl0),var(--pl4))}
+.hp-card:nth-of-type(3n+2)>h2::before{background:linear-gradient(180deg,var(--pl1),var(--pl3))}
+.hp-card:nth-of-type(3n+3)>h2::before{background:linear-gradient(180deg,var(--pl2),var(--pl7))}
+.hp-gc:hover{border-color:var(--pl0);box-shadow:0 8px 22px color-mix(in srgb,var(--pl0) 18%,transparent)}
+.hp-eyebrow::before{background:linear-gradient(90deg,var(--pl0),var(--pl4))}
+.fx-prog{background:linear-gradient(90deg,var(--pl0),var(--pl2),var(--pl4),var(--pl6))!important}
 </style>
 <div id="hp" class="hp">
   <header class="hp-hero">

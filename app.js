@@ -16,7 +16,8 @@ let ALLM=[],FYS=[],MON=[],AV=12,D=[],CATS=[],SYMS=[],PC=[],catBy={},symBy={},pcB
 let anim='tab',animNow=null,animT=null;
 const PREVK={};
 const reduced=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
-const colors=()=>dash.colors||[];
+const PAL=['var(--pl0)','var(--pl1)','var(--pl2)','var(--pl3)','var(--pl4)','var(--pl5)','var(--pl6)','var(--pl7)'];
+const colors=()=>PAL;
 const col=i=>colors()[i%Math.max(1,colors().length)]||'var(--color-fg)';
 const FLOW=[{k:'o',n:'ยกมา',c:7},{k:'r',n:'รับ',c:0},{k:'d',n:'จ่าย',c:1},{k:'b',n:'คงเหลือ',c:2}];
 const fcol=k=>k==='o'?'var(--cds-chart-muted)':k==='r'?col(0):k==='d'?col(1):col(2);
