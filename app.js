@@ -726,11 +726,11 @@ function render(){
   else if(S.tab==='items')renderItems();
   else if(S.tab==='alerts')renderAlerts();
   else if(S.tab==='order')renderOrder();
-  countUps();liqGo();critMark();tabInd();thSync();morphApply();fxPass();
+  countUps();liqGo();critMark();tabInd();thSync();ovMore();takeaways();glossPass();topBtn();morphApply();fxPass();
 }
 function redraw(){go();
   if(S.tab==='overview')renderOverview();else if(S.tab==='cats')renderCats();else if(S.tab==='groups')renderGroups();else if(S.tab==='abc')renderAbc();else if(S.tab==='items')renderItems();else if(S.tab==='order')renderOrder();else if(S.tab==='alerts')renderAlerts();
-  countUps();liqGo();critMark();tabInd();thSync();morphApply();fxPass();}
+  countUps();liqGo();critMark();tabInd();thSync();ovMore();takeaways();glossPass();topBtn();morphApply();fxPass();}
 
 
 /* ---- race: อันดับ 10 อันดับแรกรายเดือน + แถบเลื่อน + เล่นย้อนดู ---- */
@@ -799,6 +799,58 @@ document.addEventListener('click',e=>{
   if(was){svg.classList.remove('has-sel');inf.hidden=true;}
   else{rb.classList.add('sel');svg.classList.add('has-sel');inf.hidden=false;inf.textContent=(rb.getAttribute('data-tip')||'').replace(/\n/g,' · ')+'  (กดอีกครั้งเพื่อยกเลิก)';}
 });
+
+/* ---- คำอธิบายศัพท์ (i), ข้อสรุปหนึ่งประโยคใต้กราฟ, ปุ่มกลับขึ้นบน ---- */
+const GL={
+ 'วันที่สต็อกพอใช้':()=>'ถ้ายังจ่ายในอัตราเดิม ยาที่เหลือจะพอใช้อีกกี่วัน\n= คงเหลือ ÷ ปริมาณจ่ายเฉลี่ยต่อวัน\nน้อยกว่า '+TH.low+' วัน = ใกล้หมด · มากกว่า '+TH.over+' วัน = ล้นสต็อก',
+ 'อัตราหมุนเวียน':()=>'สต็อกถูกใช้ไปและเติมใหม่กี่รอบต่อปี\nสูง = ของหมุนเร็ว · ต่ำ = ของนอนนาน',
+ 'ABC':()=>'จัดยาเป็น 3 ชั้นตามมูลค่าที่จ่าย\nA = กลุ่มเล็กที่คิดเป็น 80% ของมูลค่า ต้องดูใกล้ชิดที่สุด\nB = ถัดไปจนถึง 95% · C = ที่เหลือ',
+ 'ยกมา':()=>'ยอดคงเหลือตอนต้นเดือน (ยกจากสิ้นเดือนก่อน)',
+ 'รับ':()=>'ยาที่รับเข้าคลังในช่วงที่เลือก',
+ 'จ่าย':()=>'ยาที่จ่ายออกจากคลังในช่วงที่เลือก',
+ 'คงเหลือ':()=>'ยอดที่เหลือในคลังตอนสิ้นช่วง\n= ยกมา + รับ − จ่าย',
+ 'ล้นสต็อก':()=>'มีของมากเกินที่ใช้: พอใช้นานกว่า '+TH.over+' วัน ควรชะลอการสั่ง',
+ 'ไม่เคลื่อนไหว':()=>'มีของเหลือในคลังแต่ไม่มีการจ่ายเลยในช่วงที่เลือก',
+ 'Sankey':()=>'อ่านจากซ้ายไปขวา: ยกมา/รับ → หมวด → จ่าย/คงเหลือ\nแถบกว้าง = มูลค่ามาก · กดเส้นเพื่อล็อกดูตัวเลข',
+ 'Treemap':()=>'ขนาดกล่อง = มูลค่าคงเหลือ\nสี = พอใช้กี่วัน (แดงน้อย · เขียวพอดี · เหลืองเกิน)',
+ 'Heatmap':()=>'ยิ่งสีเข้ม = เดือนนั้นจ่ายมาก',
+ 'พาเรโต':()=>'กราฟสะสม: ยาไม่กี่ตัวแรกคิดเป็นมูลค่าจ่ายส่วนใหญ่'
+};
+function glossPass(){
+  $$('#hp .hp-kpi .l, #hp .hp-card>h2, #hp .hp-gc .t, #hp th').forEach(e=>{
+    if(e.querySelector('.gl'))return;
+    const t=(e.textContent||'').trim();let k=null;
+    const f=t.split(/[\s(·]/)[0];
+    if(GL[f])k=f;else Object.keys(GL).forEach(g=>{if(!k&&g.length>3&&t.indexOf(g)>=0)k=g;});
+    if(!k)return;
+    const b=document.createElement('button');b.type='button';b.className='gl';b.textContent='i';b.setAttribute('aria-label','อธิบายคำว่า '+k);
+    b.dataset.tip='คำอธิบาย: '+k+'\n'+GL[k]();e.appendChild(b);});
+}
+function takeaways(){
+  const rows=filt({view:1,unit:1});
+  const P=PC.map(p=>{const rs=rows.filter(x=>x.pcat===p.code);return {p:p,a:agg(rs,'v')};}).filter(o=>o.a.o+o.a.r>0);
+  const tot=sum(P.map(o=>o.a.o+o.a.r)),tD=sum(P.map(o=>o.a.d));
+  const sk=$('#sk-t');
+  if(sk){if(!tot)sk.textContent='';else{const top=P.slice().sort((a,b)=>(b.a.o+b.a.r)-(a.a.o+a.a.r))[0];
+    sk.innerHTML='สรุป: <b>'+esc(top.p.name)+'</b> เป็นหมวดที่มีมูลค่ามากที่สุด ('+pct((top.a.o+top.a.r)/tot,0)+' ของยกมา+รับ) · จ่ายออกไป '+pct(tD/tot,0)+' ของทั้งหมด ที่เหลือคือคงเหลือในคลัง';}}
+  const hm=$('#hm-t');
+  if(hm){if(AV<2)hm.textContent='สรุป: มีข้อมูลเดือนเดียว ยังเทียบรายเดือนไม่ได้';else{
+    let best=null;P.forEach(o=>{const rs=rows.filter(x=>x.pcat===o.p.code);for(let i=0;i<AV;i++){const v=sum(rs.map(x=>+x.dv[i]||0));if(!best||v>best.v)best={v:v,i:i,n:o.p.name};}});
+    hm.innerHTML=best&&best.v>0?'สรุป: จ่ายสูงสุดในเดือน <b>'+esc(mlab(best.i))+'</b> หมวด <b>'+esc(best.n)+'</b> ('+baht(best.v)+' บาท)':'';}}
+  const rc=$('#rc-t');
+  if(rc){const k=RC.k==='d'?'dv':'bv';const arr=rows.map(x=>({x:x,v:+x[k][Math.min(RC.i<0?AV-1:RC.i,AV-1)]||0})).sort((a,b)=>b.v-a.v);const tt=sum(arr.map(o=>o.v));
+    rc.innerHTML=arr.length&&tt>0?'สรุป: <b>'+esc(arr[0].x.label)+'</b> สูงสุด คิดเป็น '+pct(arr[0].v/tt,0)+' ของ'+(RC.k==='d'?'มูลค่าจ่าย':'มูลค่าคงเหลือ')+'ในเดือน '+esc(mlab(Math.min(RC.i<0?AV-1:RC.i,AV-1))):'';}
+}
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.gl')){e.stopPropagation();e.preventDefault();}},true);
+function topBtn(){
+  if($('#fx-top'))return;const b=document.createElement('button');b.id='fx-top';b.type='button';b.textContent='↑';b.setAttribute('aria-label','กลับขึ้นบนสุด');b.hidden=true;
+  b.addEventListener('click',()=>window.scrollTo({top:0,behavior:reduced()?'auto':'smooth'}));
+  const r=$('#hp');if(r)r.appendChild(b);
+  const u=()=>{b.hidden=(window.scrollY||document.documentElement.scrollTop)<700;};window.addEventListener('scroll',u,{passive:true});u();}
+window.addEventListener('beforeprint',()=>{$$('#hp details').forEach(d=>{d.dataset.po=d.open?'1':'0';d.open=true;});});
+window.addEventListener('afterprint',()=>{$$('#hp details').forEach(d=>{if(d.dataset.po==='0')d.open=false;});});
+let ovInit=false;
+function ovMore(){const d=$('#ov-more');if(!d||ovInit)return;ovInit=true;if(window.innerWidth<760)d.open=false;}
 /* ---- fx: ลูกเล่น animation เพิ่มเติม (ปิดอัตโนมัติเมื่อผู้ใช้ตั้งลดการเคลื่อนไหว) ---- */
 let fxIO=null,fxInit=false;
 function fxOnce(){
@@ -810,7 +862,7 @@ function fxOnce(){
   const hero=$('.hp-hero',root);
   if(hero){const w=document.createElement('div');w.className='fx-pills';w.setAttribute('aria-hidden','true');
     for(let i=0;i<7;i++){const e=document.createElement('i');e.style.cssText='--x:'+(8+i*13)+'%;--s:'+(0.7+((i*37)%5)/10)+';--d:'+(9+(i*5)%7)+'s;--dl:'+(-i*1.7)+'s;--c:'+(['a','b','c'][i%3]);w.appendChild(e);}
-    hero.prepend(w);}
+    hero.prepend(w);setTimeout(()=>w.classList.add('off'),16000);}
   if(window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches){
     root.addEventListener('pointermove',e=>{
       const t=e.target.closest&&e.target.closest('.hp-kpi,.hp-card');if(!t)return;

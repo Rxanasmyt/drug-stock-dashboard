@@ -579,6 +579,16 @@
 .th-form{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}.th-form input{width:4.6em;padding:4px 6px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg);font:inherit;min-height:34px}
 .hp-tabs .tb{display:inline-block;margin-left:7px;min-width:1.5em;padding:1px 6px;border-radius:99px;background:var(--color-bad);color:#fff;font-size:.72rem;line-height:1.5;font-weight:700;vertical-align:middle}
 @media (prefers-reduced-motion:no-preference){.fx-pills i{animation-delay:calc(var(--dl) + 2.4s)}.hp-tabs .tb{animation:hpPop .5s 1.2s cubic-bezier(.3,1.6,.5,1) both}}
+
+.gl{display:inline-grid;place-items:center;width:1.25em;height:1.25em;margin-left:6px;padding:0;border-radius:50%;border:1px solid var(--color-border-line);background:var(--color-bg);color:var(--color-fg-muted);font:700 .68rem/1 var(--font-anthropic-sans,inherit);vertical-align:middle;cursor:help}
+.gl:hover,.gl:focus-visible{background:var(--pl0);color:#fff;border-color:var(--pl0)}
+#ov-more>summary{cursor:pointer;font-weight:600;padding:10px 14px;border-radius:12px;border:1px solid var(--color-border-line);background:var(--color-panel);list-style:none;margin-bottom:12px}
+#ov-more>summary::before{content:"▸ ";display:inline-block;transition:transform .2s}#ov-more[open]>summary::before{transform:rotate(90deg)}
+#ov-more>summary::-webkit-details-marker{display:none}
+#ov-more>.hp-card,#ov-more>.hp-grid{margin-bottom:var(--cds-gap-md)}
+.fx-pills{transition:opacity 1.5s}.fx-pills.off{opacity:0}
+#fx-top{position:fixed;right:14px;bottom:16px;z-index:40;width:44px;height:44px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--pl0),var(--pl2));color:#fff;font-size:1.2rem;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+@media print{#fx-top,.gl{display:none!important}}
 </style>
 <div id="hp" class="hp">
   <header class="hp-hero">
@@ -642,11 +652,13 @@
       <div class="hp-card"><h2 id="ov-wf-h">การไหลของสต็อก</h2><p class="hp-note" id="ov-wf-n"></p><div class="hp-svg" id="ov-wf" style="min-height:190px"></div></div>
       <div class="hp-card"><h2 id="ov-trend-h">รายเดือน</h2><p class="hp-note" id="ov-trend-n"></p><div class="hp-svg" id="ov-trend" style="min-height:260px"></div><div class="hp-lg" id="ov-trend-lg"></div></div>
     </div>
+    <details id="ov-more" open><summary>รายละเอียดเพิ่มเติม: สรุปตามหมวด · กลุ่มโรค · รายการสูงสุด</summary>
     <div class="hp-card"><h2>สรุปตามหมวดสินค้า</h2><p class="hp-note" id="ov-pc-n"></p><div class="hp-tw st" id="ov-pc"></div></div>
     <div class="hp-grid w2">
       <div class="hp-card"><h2 id="ov-grp-h">คงเหลือตามกลุ่มโรค</h2><p class="hp-note" id="ov-grp-n"></p><div id="ov-grp"></div></div>
       <div class="hp-card"><h2 id="ov-top-h">รายการคงเหลือสูงสุด</h2><p class="hp-note">กดที่แถวเพื่อดูรายละเอียดรายเดือนของรายการนั้น</p><div id="ov-top"></div></div>
     </div>
+    </details>
   </section>
 
   <section class="hp-sec" id="hp-order" hidden>
@@ -658,9 +670,9 @@
   <section class="hp-sec" id="hp-cats" hidden>
     <div id="ct-head"></div>
     <div class="hp-grid" id="ct-cards"></div>
-    <div class="hp-card"><h2>แผนภาพการไหลของมูลค่า (Sankey)</h2><p class="hp-note">ความกว้างแถบ = มูลค่า (บาท) · ซ้าย: ยกมา และรับ → กลาง: หมวดสินค้า → ขวา: จ่าย และคงเหลือ · กดหมวดเพื่อกรอง</p><div id="ct-sk" class="hp-svg" style="min-height:300px"></div></div>
-    <div class="hp-card"><h2>จ่ายรายเดือนแยกตามหมวด (Heatmap)</h2><p class="hp-note">มูลค่าจ่ายต่อเดือน (บาท) · ยิ่งเข้ม ยิ่งจ่ายมาก · ช่อง "·" = เดือนที่ยังไม่มีข้อมูล</p><div id="ct-hm" class="hp-hmw"></div></div>
-    <div class="hp-card"><h2>อันดับยา 10 อันดับแรก ย้อนดูรายเดือน</h2><p class="hp-note" id="rc-n"></p><div id="ct-race"></div></div>
+    <div class="hp-card"><h2>แผนภาพการไหลของมูลค่า (Sankey)</h2><p class="hp-sum2" id="sk-t"></p><p class="hp-note">ความกว้างแถบ = มูลค่า (บาท) · ซ้าย: ยกมา และรับ → กลาง: หมวดสินค้า → ขวา: จ่าย และคงเหลือ · กดหมวดเพื่อกรอง</p><div id="ct-sk" class="hp-svg" style="min-height:300px"></div></div>
+    <div class="hp-card"><h2>จ่ายรายเดือนแยกตามหมวด (Heatmap)</h2><p class="hp-sum2" id="hm-t"></p><p class="hp-note">มูลค่าจ่ายต่อเดือน (บาท) · ยิ่งเข้ม ยิ่งจ่ายมาก · ช่อง "·" = เดือนที่ยังไม่มีข้อมูล</p><div id="ct-hm" class="hp-hmw"></div></div>
+    <div class="hp-card"><h2>อันดับยา 10 อันดับแรก ย้อนดูรายเดือน</h2><p class="hp-sum2" id="rc-t"></p><p class="hp-note" id="rc-n"></p><div id="ct-race"></div></div>
     <div class="hp-card"><h2>หมวดสินค้า × หน่วยนับ: ปริมาณและมูลค่า</h2><p class="hp-note" id="ct-n"></p><div class="hp-tw st" id="ct-tbl"></div></div>
   </section>
 
