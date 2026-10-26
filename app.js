@@ -90,7 +90,7 @@ function mser(rows,m){
 }
 const dos=a=>a.dk>0?a.b/(a.dk/a.dayk):(a.b>0?Infinity:null);
 const turn=a=>{const av=(a.o+a.b)/2;return av>0?a.d/av*365/days():null;};
-const fdosH=v=>{const t=fdos(v);if(v==null||!isFinite(v))return t;const p=Math.min(1,v/240)*100;return '<span class="hp-dosw">'+t+'<span class="hp-dosb" title="แถบเทียบ: แดง < 30 วัน · เขียว 30–180 วัน · เหลือง > 180 วัน"><i style="left:'+p.toFixed(1)+'%"></i></span></span>';};
+const fdosH=v=>{const t=fdos(v);if(v==null||!isFinite(v))return t;const M=TH.over*4/3,p=Math.min(1,v/M)*100,lp=(TH.low/M*100).toFixed(1),op=(TH.over/M*100).toFixed(1);return '<span class="hp-dosw">'+t+'<span class="hp-dosb" style="background:linear-gradient(90deg,var(--color-bad) 0 '+lp+'%,var(--color-ok) '+lp+'% '+op+'%,var(--color-warn) '+op+'% 100%)" title="แถบเทียบ: แดง < '+TH.low+' วัน · เขียว '+TH.low+'–'+TH.over+' วัน · เหลือง > '+TH.over+' วัน"><i style="left:'+p.toFixed(1)+'%"></i></span></span>';};
 const fdos=v=>v==null?'—':!isFinite(v)?'ไม่มีการจ่าย':v>=1000?'> 999 วัน':nf(v)+' วัน';
 function filt(o){
   return D.filter(x=>(!S.excl||!DQ[x.id])&&(!o.pc||S.pc==='ALL'||x.pcat===S.pc)&&(!o.view||S.view==='ALL'||gk(x)===S.view)&&(!o.unit||S.m!=='q'||!S.unit||x.unit===S.unit));
@@ -99,8 +99,8 @@ const scope=()=>filt({pc:1,view:1,unit:1});
 function stat(x){
   const a=agg([x],'q'),ds=dos(a);
   if(a.b<=0&&a.d>0)return {k:'out',t:'หมดสต็อก',c:'b-bad',dos:ds};
-  if(a.d>0&&ds<30)return {k:'low',t:'ใกล้หมด',c:'b-warn',dos:ds};
-  if(a.d>0&&ds>180)return {k:'over',t:'ล้นสต็อก',c:'b-warn',dos:ds};
+  if(a.d>0&&ds<TH.low)return {k:'low',t:'ใกล้หมด',c:'b-warn',dos:ds};
+  if(a.d>0&&ds>TH.over)return {k:'over',t:'ล้นสต็อก',c:'b-warn',dos:ds};
   if(a.d>0)return {k:'ok',t:'พอใช้',c:'b-ok',dos:ds};
   if(a.b>0)return {k:'idle',t:'ไม่เคลื่อนไหว',c:'b-mut',dos:ds};
   return {k:'none',t:'ไม่มีสต็อก',c:'b-mut',dos:null};
@@ -149,7 +149,7 @@ function treemap(host,gs){
   const data=gs.filter(o=>o.a.b>0);if(!data.length){host.innerHTML='<div class="hp-empty">ไม่มียอดคงเหลือในตัวกรองนี้</div>';return;}
   const root=d3.hierarchy({children:data}).sum(d=>d.a?d.a.b:0).sort((p,q)=>q.value-p.value);
   d3.treemap().size([W,H]).paddingInner(3).round(true)(root);
-  const zc=o=>{const ds=dos(o.a);if(ds==null||!isFinite(ds))return '#7d8a99';return ds<30?'var(--color-bad)':ds>180?'var(--color-warn)':'var(--color-ok)';};
+  const zc=o=>{const ds=dos(o.a);if(ds==null||!isFinite(ds))return '#7d8a99';return ds<TH.low?'var(--color-bad)':ds>TH.over?'var(--color-warn)':'var(--color-ok)';};
   let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="แผนที่สต็อกตามกลุ่ม ขนาด = มูลค่าคงเหลือ">';
   root.leaves().forEach((n,i)=>{const o=n.data,w=n.x1-n.x0,hh=n.y1-n.y0,ds=dos(o.a);
     s+='<g class="hp-tmg" style="--i:'+i+'" data-act="view" data-k="'+esc(o.g.code)+'" data-tip="'+esc(o.g.name+'\nคงเหลือ '+fmtM(o.a.b)+' '+unitTxt()+'\nจ่าย '+fmtM(o.a.d)+'\nวันที่พอใช้ '+fdos(ds))+'" style="cursor:pointer"><rect x="'+n.x0+'" y="'+n.y0+'" width="'+w+'" height="'+hh+'" rx="8" style="fill:'+zc(o)+';opacity:.82"'+(isSupG(o.g)?' stroke="var(--color-fg)" stroke-dasharray="4 3" fill-opacity=".9"':'')+'/>';
@@ -371,7 +371,7 @@ function renderOverview(){
   const out=rows.filter(x=>stat(x).k==='out').length,low=rows.filter(x=>stat(x).k==='low').length;
   {const ov=rows.filter(x=>stat(x).k==='over'),ovV=sum(ov.map(x=>agg([x],'v').b));
    const tile=(ic,c,n,t,sub)=>'<button class="hp-gc" style="border-top:3px solid '+c+'" data-act="tab" data-t="order"><span class="t">'+ic+' '+t+'</span><span class="v">'+nf(n)+' <small class="hp-mut">รายการ</small></span><span class="tp">'+sub+'</span></button>';
-   $('#ov-glance').innerHTML='<h2 class="hp-gh">สรุปวันนี้ อ่านใน 10 วินาที</h2><div class="hp-grid">'+tile('✕','var(--color-bad)',out,'ต้องสั่งเร่งด่วน','หมดสต็อกแต่ยังมีการจ่าย · กดเพื่อดูรายการสั่งซื้อ')+tile('!','var(--color-warn)',low,'ใกล้หมด','พอใช้ไม่ถึง 30 วัน')+tile('◆','var(--cds-chart-muted)',ov.length,'ล้นสต็อก','พอใช้เกิน 180 วัน · มูลค่าคงเหลือ '+baht(ovV)+' บาท · ชะลอการสั่ง')+'</div>';}
+   $('#ov-glance').innerHTML='<h2 class="hp-gh">สรุปวันนี้ อ่านใน 10 วินาที</h2><div class="hp-grid">'+tile('✕','var(--color-bad)',out,'ต้องสั่งเร่งด่วน','หมดสต็อกแต่ยังมีการจ่าย · กดเพื่อดูรายการสั่งซื้อ')+tile('!','var(--color-warn)',low,'ใกล้หมด','พอใช้ไม่ถึง '+TH.low+' วัน')+tile('◆','var(--cds-chart-muted)',ov.length,'ล้นสต็อก','พอใช้เกิน '+TH.over+' วัน · มูลค่าคงเหลือ '+baht(ovV)+' บาท · ชะลอการสั่ง')+'</div>';}
   const diff=a.o+a.r-a.d-a.b;
   headline($('#ov-head'),out>0?'bad':'info','<span class="hp-hl-t">'+esc(scopeName())+' · '+esc(rangeLabel())+'</span> ยกมา <b>'+fmtM(a.o)+'</b> + รับ <b>'+fmtM(a.r)+'</b> − จ่าย <b>'+fmtM(a.d)+'</b> = คงเหลือ <b>'+fmtM(a.b)+'</b> '+unitTxt()+(dd!=null?' · สต็อกพอใช้ประมาณ <b>'+fdos(dd)+'</b> ตาม'+rateNote():'')+(out?' · <b class="up-bad">หมดสต็อกแต่ยังมีการจ่าย '+out+' รายการ</b>':'')+(Math.abs(diff)>0.5?' · <b class="up-bad">ตรวจสมการไม่ลงตัว '+nf(diff)+'</b>':''));
   const pa=aggPrev(rows,m);
@@ -379,7 +379,7 @@ function renderOverview(){
   $('#ov-kpis2').innerHTML=
     kpi('วันที่สต็อกพอใช้',dd==null?'—':!isFinite(dd)?'—':cnt('dos',Math.round(dd),'n')+' <small>วัน</small>','คงเหลือ ÷ อัตราจ่ายต่อวัน · '+rateNote())+
     kpi('อัตราหมุนเวียน',tn==null?'—':nf1(tn)+' <small>ครั้ง/ปี</small>','จ่าย ÷ สต็อกเฉลี่ย ปรับเป็นต่อปี')+
-    kpi('หมดสต็อก / ใกล้หมด',nf(out)+' <small>/ '+nf(low)+' รายการ</small>','หมดสต็อกแต่ยังจ่าย / พอใช้ไม่ถึง 30 วัน')+
+    kpi('หมดสต็อก / ใกล้หมด',nf(out)+' <small>/ '+nf(low)+' รายการ</small>','หมดสต็อกแต่ยังจ่าย / พอใช้ไม่ถึง '+TH.low+' วัน')+
     kpi('ไม่เคลื่อนไหวแต่มีของ',baht(idleV)+' <small>บาท</small>','มูลค่าคงเหลือของรายการที่ไม่มีการจ่ายในช่วง');
   $('#ov-wf-h').textContent='ยกมา + รับ − จ่าย = คงเหลือ ('+(m==='v'?'มูลค่า':'ปริมาณ '+S.unit)+')';
   $('#ov-wf-n').textContent='ความยาวแท่งเทียบกันในหน่วยเดียวกัน · '+rangeLabel();
@@ -389,7 +389,7 @@ function renderOverview(){
   $('#ov-trend-n').textContent=AV<MON.length?'กรอบ '+MON.length+' เดือนของปีงบ · มีข้อมูล '+AV+' เดือน (เดือนที่เหลือเป็นช่องว่าง รอข้อมูลถัดไป) · แท่ง = รับ/จ่ายในเดือน เส้น = คงเหลือสิ้นเดือน':'แท่ง = รับ/จ่ายในเดือน เส้น = คงเหลือสิ้นเดือน · แท่งจาง = เดือนนอกช่วงที่เลือก';
   trendChart($('#ov-trend'),ser,m);
   $('#ov-trend-lg').innerHTML='<span style="--c:'+fcol('r')+'">รับ</span><span style="--c:'+fcol('d')+'">จ่าย</span><span class="ln" style="--c:'+fcol('b')+'">คงเหลือสิ้นเดือน</span>';
-  $('#ov-pc-n').textContent='หน่วย: '+unitTxt()+' · แถบใต้วันที่พอใช้: แดง < 30 · เขียว 30–180 · เหลือง > 180 วัน · ตามตัวกรองกลุ่มโรค'+(S.m==='q'?' และหน่วยนับ '+S.unit:'')+'ที่เลือก · กดแถวเพื่อกรองเฉพาะหมวดนั้น';
+  $('#ov-pc-n').textContent='หน่วย: '+unitTxt()+' · แถบใต้วันที่พอใช้: แดง < '+TH.low+' · เขียว '+TH.low+'–'+TH.over+' · เหลือง > '+TH.over+' วัน · ตามตัวกรองกลุ่มโรค'+(S.m==='q'?' และหน่วยนับ '+S.unit:'')+'ที่เลือก · กดแถวเพื่อกรองเฉพาะหมวดนั้น';
   pcTable($('#ov-pc'));
   // groups
   const base=filt({pc:1,unit:1});
@@ -440,14 +440,14 @@ function renderGroups(){
   const dr=gsA.filter(o=>!isSupG(o.g)),su=gsA.filter(o=>isSupG(o.g));
   const topG=dr[0]||su[0];
   headline($('#gr-head'),'info','<span class="hp-hl-t">เทียบกลุ่ม'+(S.mode==='sym'?'อาการ':'โรค')+' · '+esc(S.pc==='ALL'?'ทุกหมวด':pcBy[S.pc].short)+' · '+esc(rangeLabel())+'</span> '+(topG&&all.b?'กลุ่มที่คงเหลือมากสุด: <b>'+esc(topG.g.short)+'</b> '+fmtM(topG.a.b)+' '+unitTxt()+' ('+pct(topG.a.b/all.b,0)+')':'ไม่มีข้อมูลในตัวกรองนี้'));
-  $('#gr-tm-n').textContent='ขนาดพื้นที่ = '+(m==='v'?'มูลค่า':'ปริมาณ '+S.unit)+'คงเหลือ · สี = วันที่สต็อกพอใช้ (แดง < 30 · เขียว 30–180 · เหลือง > 180 · เทา = ไม่มีการจ่าย) · กรอบประ = กลุ่มวัสดุ/เวชภัณฑ์มิใช่ยา · กดเพื่อเลือกกลุ่ม';
+  $('#gr-tm-n').textContent='ขนาดพื้นที่ = '+(m==='v'?'มูลค่า':'ปริมาณ '+S.unit)+'คงเหลือ · สี = วันที่สต็อกพอใช้ (แดง < '+TH.low+' · เขียว '+TH.low+'–'+TH.over+' · เหลือง > '+TH.over+' · เทา = ไม่มีการจ่าย) · กรอบประ = กลุ่มวัสดุ/เวชภัณฑ์มิใช่ยา · กดเพื่อเลือกกลุ่ม';
   treemap($('#gr-tm'),gsA);
   $('#gr-bars-h').textContent='คงเหลือและจ่ายออกตามกลุ่ม'+(S.mode==='sym'?'อาการ':'โรค');
   $('#gr-n').textContent=(m==='v'?'มูลค่า (บาท)':'ปริมาณหน่วย '+S.unit)+' · แยกกลุ่มยากับกลุ่มวัสดุ/เวชภัณฑ์มิใช่ยา เพราะเทียบกันตรง ๆ ไม่ได้ · กดเพื่อเลือกกลุ่ม';
   const lim=S.grAll?1e9:12;
   const sect=(t,L,tot)=>L.length?'<h3 class="hp-sh">'+t+' <span class="hp-mut">'+L.length+' กลุ่ม · คงเหลือรวม '+fmtM(tot.b)+' '+unitTxt()+'</span></h3>'+pairBars(L.slice(0,lim).map(o=>({label:o.g.short,b:o.a.b,d:o.a.d,attr:'data-act="view" data-k="'+esc(o.g.code)+'"',tip:o.g.name+'\nคงเหลือ '+fmtM(o.a.b)+'\nจ่าย '+fmtM(o.a.d)}))):'';
   $('#gr-bars').innerHTML=(gsA.length?lgd([['คงเหลือ (แท่งหนา)',fcol('b')],['จ่ายในช่วง (แท่งบาง)',fcol('d')]]):'')+sect('กลุ่ม'+(S.mode==='sym'?'อาการ':'โรค')+' (ยา)',dr,agg(dr.reduce((a,o)=>a.concat(o.rs),[])))+sect('กลุ่มวัสดุ / เวชภัณฑ์มิใช่ยา',su,agg(su.reduce((a,o)=>a.concat(o.rs),[])))+((dr.length>12||su.length>12)?'<button class="hp-btn" data-act="grall">'+(S.grAll?'แสดงเฉพาะ 12 อันดับแรก':'แสดงทุกกลุ่ม')+'</button>':'')+(gsA.length?'':'<div class="hp-empty">ไม่มีข้อมูล</div>');
-  $('#gr-tn').textContent='หน่วย: '+unitTxt()+' · ตามหมวดที่เลือก ('+(S.pc==='ALL'?'ทุกหมวด':pcBy[S.pc].name)+') · วันที่พอใช้ = คงเหลือ ÷ อัตราจ่ายต่อวัน (แดง < 30 · เขียว 30–180 · เหลือง > 180 วัน) · กดแถวเพื่อเลือกกลุ่ม';
+  $('#gr-tn').textContent='หน่วย: '+unitTxt()+' · ตามหมวดที่เลือก ('+(S.pc==='ALL'?'ทุกหมวด':pcBy[S.pc].name)+') · วันที่พอใช้ = คงเหลือ ÷ อัตราจ่ายต่อวัน (แดง < '+TH.low+' · เขียว '+TH.low+'–'+TH.over+' · เหลือง > '+TH.over+' วัน) · กดแถวเพื่อเลือกกลุ่ม';
   const row=o=>'<tr data-act="view" data-k="'+esc(o.g.code)+'"'+(S.view===o.g.code?' class="sel"':'')+'><td title="'+esc(o.g.name)+'">'+esc(o.g.name)+'</td><td>'+nf(o.na)+' <small class="hp-mut">/ '+nf(o.n)+'</small></td>'+flowCells(o.a)+'<td>'+(all.b?pct(o.a.b/all.b,1):'—')+'</td><td>'+fdosH(dos(o.a))+'</td></tr>';
   const subT=(t,L)=>{const rs=L.reduce((a,o)=>a.concat(o.rs),[]),a=agg(rs);return '<tr class="sub"><td>'+t+'</td><td>'+nf(nAct(rs))+' <small class="hp-mut">/ '+nf(rs.length)+'</small></td>'+flowCells(a)+'<td>'+(all.b?pct(a.b/all.b,1):'—')+'</td><td>'+fdosH(dos(a))+'</td></tr>';};
   let h='<table><thead><tr><th>กลุ่ม</th><th>รายการ (เคลื่อนไหว / ทั้งหมด)</th><th>ยกมา</th><th>รับ</th><th>จ่าย</th><th>คงเหลือ</th><th>สัดส่วนคงเหลือ</th><th>วันที่พอใช้</th></tr></thead><tbody>';
@@ -586,13 +586,13 @@ function renderAlerts(){
   const blankV=info.filter(o=>o.q.b>0&&o.v.b===0);
   const dq=info.filter(o=>DQ[o.x.id]).sort((p,q)=>DQ[q.x.id].ratio-DQ[p.x.id].ratio);
   const idleV=sum(idle.map(o=>o.v.b)),overV=sum(over.map(o=>o.v.b));
-  headline($('#al-head'),out.length?'bad':'ok','ควรเร่งดู: <b>'+out.length+'</b> รายการหมดสต็อกแต่ยังมีการจ่าย · <b>'+low.length+'</b> รายการพอใช้ไม่ถึง 30 วัน · <b>'+over.length+'</b> รายการล้นสต็อก · <b>'+idle.length+'</b> รายการไม่เคลื่อนไหว');
+  headline($('#al-head'),out.length?'bad':'ok','ควรเร่งดู: <b>'+out.length+'</b> รายการหมดสต็อกแต่ยังมีการจ่าย · <b>'+low.length+'</b> รายการพอใช้ไม่ถึง '+TH.low+' วัน · <b>'+over.length+'</b> รายการล้นสต็อก · <b>'+idle.length+'</b> รายการไม่เคลื่อนไหว');
   $('#al-h').textContent='สต็อกเสี่ยงและข้อสังเกต · '+scopeName()+' · '+rangeLabel();
-  $('#al-n').textContent='ตัวชี้วัดคำนวณจาก'+' ('+rateNote()+(rateWin().k<3?' ยาที่จ่ายเป็นรอบหรือสั่งเป็นล็อตอาจถูกจัดผิด':'')+') ผลที่ได้เป็นสัญญาณให้ตรวจสอบต่อ ไม่ใช่ข้อสรุป'+' · เกณฑ์: ใกล้หมด < 30 วัน, ล้นสต็อก > 180 วัน, ไม่เคลื่อนไหว = มีของแต่ไม่จ่ายเลยในช่วง';
+  $('#al-n').textContent='ตัวชี้วัดคำนวณจาก'+' ('+rateNote()+(rateWin().k<3?' ยาที่จ่ายเป็นรอบหรือสั่งเป็นล็อตอาจถูกจัดผิด':'')+') ผลที่ได้เป็นสัญญาณให้ตรวจสอบต่อ ไม่ใช่ข้อสรุป'+' · เกณฑ์: ใกล้หมด < '+TH.low+' วัน, ล้นสต็อก > '+TH.over+' วัน, ไม่เคลื่อนไหว = มีของแต่ไม่จ่ายเลยในช่วง';
   const sm=[];
   sm.push(['bad','หมดสต็อกแต่ยังมีการจ่าย',out.length+' รายการ (เป็นยอดสิ้นเดือน '+mlab(S.to-1)+' ควรเทียบกับการสั่งซื้อที่กำลังเข้า)']);
-  sm.push(['warn','พอใช้ไม่ถึง 30 วัน',low.length+' รายการ']);
-  sm.push(['warn','ล้นสต็อก (พอใช้เกิน 180 วัน)',over.length+' รายการ มูลค่าคงเหลือรวม '+baht(overV)+' บาท']);
+  sm.push(['warn','พอใช้ไม่ถึง '+TH.low+' วัน',low.length+' รายการ']);
+  sm.push(['warn','ล้นสต็อก (พอใช้เกิน '+TH.over+' วัน)',over.length+' รายการ มูลค่าคงเหลือรวม '+baht(overV)+' บาท']);
   sm.push(['info','มีของแต่ไม่เคลื่อนไหว',idle.length+' รายการ มูลค่ารวม '+baht(idleV)+' บาท ควรทบทวนวันหมดอายุและความจำเป็น']);
   sm.push([dq.length?'warn':'ok','ราคาต่อหน่วย/หน่วยนับที่ควรตรวจ',dq.length?dq.length+' รายการ (ดูส่วนแรกด้านล่าง) ตัวเลขปริมาณและวัน/สต็อกของรายการเหล่านี้อาจคลาดเคลื่อน':'ไม่พบรายการที่ราคาต่อหน่วยหรือหน่วยนับผิดปกติตามเกณฑ์']);
   const nU=info.filter(o=>DQU[o.x.id]).length;
@@ -604,8 +604,8 @@ function renderAlerts(){
   let h='';
   h+=sec('ข้อมูลที่ควรตรวจ: ราคาต่อหน่วยและหน่วยนับ','ตรวจอัตโนมัติจากราคาต่อหน่วยตั้งแต่ 200 บาทและสูงกว่ามัธยฐานของรายการหน่วยเดียวกันในหมวดเดียวกันตั้งแต่ 30 เท่า (รายการที่ประเภทเป็น Box แต่หน่วยนับเป็นชิ้น/คู่ ไม่ถือเป็นข้อมูลผิดโดยตรง สรุปแยกไว้ด้านบน) · เป็นสัญญาณให้ผู้ดูแลคลังตรวจกับต้นฉบับ ไม่ใช่ข้อสรุป · ยาราคาสูงจริง (เช่น ฝังคุมกำเนิด) อาจติดเกณฑ์ได้',lim(dq).map(o=>alertCard('ตรวจข้อมูล','b-warn',o.x,esc(DQ[o.x.id].reasons.map(z=>z.txt).join(' · '))+' · คงเหลือ '+nf(o.q.b)+' '+esc(o.x.unit)+' ('+nf(o.v.b)+' บาท)')),dq.length);
   h+=sec('หมดสต็อกแต่ยังมีการจ่าย','คงเหลือสิ้นช่วงเป็น 0 แต่มีการจ่ายออกในช่วง เรียงตามมูลค่าที่จ่าย ตรวจว่ากำลังรอสั่ง/รอรับหรือควรเร่งจัดซื้อ',lim(out).map(o=>alertCard('หมดสต็อก','b-bad',o.x,'จ่ายในช่วง <b>'+nf(o.q.d)+' '+esc(o.x.unit)+'</b> ('+nf(o.v.d)+' บาท) · รับเข้า '+nf(o.q.r)+' · ยกมา '+nf(o.q.o)+' · คงเหลือ <b>0</b>')),out.length);
-  h+=sec('พอใช้ไม่ถึง 30 วัน','คงเหลือหารด้วยอัตราจ่ายต่อวันของช่วงที่เลือก เรียงจากน้อยไปมาก',lim(low).map(o=>alertCard('ใกล้หมด','b-warn',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> พอใช้ประมาณ <b>'+nf(o.st.dos)+' วัน</b> (อัตราจ่ายเฉลี่ย '+nf(o.q.dk/o.q.dayk*30)+' '+esc(o.x.unit)+'/เดือน)')),low.length);
-  h+=sec('ล้นสต็อก (พอใช้เกิน 180 วัน)','มีการจ่ายแต่คงเหลือมากเมื่อเทียบกับอัตราจ่าย เรียงตามมูลค่าคงเหลือ อาจเป็นยาสั่งเป็นล็อตหรือใช้ตามฤดูกาล',lim(over).map(o=>alertCard('ล้นสต็อก','b-warn',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> ('+nf(o.v.b)+' บาท) พอใช้ประมาณ <b>'+(isFinite(o.st.dos)?nf(o.st.dos)+' วัน':'—')+'</b> จ่าย '+nf(o.q.d)+' ในช่วง')),over.length);
+  h+=sec('พอใช้ไม่ถึง '+TH.low+' วัน','คงเหลือหารด้วยอัตราจ่ายต่อวันของช่วงที่เลือก เรียงจากน้อยไปมาก',lim(low).map(o=>alertCard('ใกล้หมด','b-warn',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> พอใช้ประมาณ <b>'+nf(o.st.dos)+' วัน</b> (อัตราจ่ายเฉลี่ย '+nf(o.q.dk/o.q.dayk*30)+' '+esc(o.x.unit)+'/เดือน)')),low.length);
+  h+=sec('ล้นสต็อก (พอใช้เกิน '+TH.over+' วัน)','มีการจ่ายแต่คงเหลือมากเมื่อเทียบกับอัตราจ่าย เรียงตามมูลค่าคงเหลือ อาจเป็นยาสั่งเป็นล็อตหรือใช้ตามฤดูกาล',lim(over).map(o=>alertCard('ล้นสต็อก','b-warn',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> ('+nf(o.v.b)+' บาท) พอใช้ประมาณ <b>'+(isFinite(o.st.dos)?nf(o.st.dos)+' วัน':'—')+'</b> จ่าย '+nf(o.q.d)+' ในช่วง')),over.length);
   h+=sec('มีของแต่ไม่เคลื่อนไหว','ไม่มีการจ่ายในช่วงที่เลือก เรียงตามมูลค่าคงเหลือ ใช้ประกอบการทบทวนวันหมดอายุ ความจำเป็นของรายการ และการแลกเปลี่ยนยากับหน่วยงานอื่น',lim(idle).map(o=>alertCard('ไม่เคลื่อนไหว','b-mut',o.x,'คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> มูลค่า <b>'+nf(o.v.b)+' บาท</b> · รับเข้า '+nf(o.q.r))),idle.length);
   h+=sec('ยาสนับสนุน: รับและจ่าย','ยาที่ได้รับสนับสนุนจากโครงการ (เช่น HIV วัณโรค) ตรวจว่ารับและจ่ายสอดคล้องกัน มูลค่าคงเหลือของยากลุ่มนี้อาจไม่ถูกบันทึกในคลัง',lim(sup).map(o=>alertCard('สนับสนุน','b-mut',o.x,'รับ <b>'+nf(o.q.r)+'</b> จ่าย <b>'+nf(o.q.d)+'</b> คงเหลือ <b>'+nf(o.q.b)+' '+esc(o.x.unit)+'</b> · มูลค่ารับ/จ่าย '+nf(o.v.r)+' / '+nf(o.v.d)+' บาท')),sup.length);
   if(mism.length||neg.length){h+=sec('ข้อมูลที่ควรตรวจ','สมการไม่ลงตัวหรือยอดติดลบ',lim(mism.concat(neg)).map(o=>alertCard('ตรวจข้อมูล','b-bad',o.x,'ยกมา '+nf(o.q.o)+' + รับ '+nf(o.q.r)+' − จ่าย '+nf(o.q.d)+' ≠ คงเหลือ '+nf(o.q.b))),mism.length+neg.length);}
@@ -726,11 +726,11 @@ function render(){
   else if(S.tab==='items')renderItems();
   else if(S.tab==='alerts')renderAlerts();
   else if(S.tab==='order')renderOrder();
-  countUps();liqGo();critMark();tabInd();morphApply();fxPass();
+  countUps();liqGo();critMark();tabInd();thSync();morphApply();fxPass();
 }
 function redraw(){go();
   if(S.tab==='overview')renderOverview();else if(S.tab==='cats')renderCats();else if(S.tab==='groups')renderGroups();else if(S.tab==='abc')renderAbc();else if(S.tab==='items')renderItems();else if(S.tab==='order')renderOrder();else if(S.tab==='alerts')renderAlerts();
-  countUps();liqGo();critMark();tabInd();morphApply();fxPass();}
+  countUps();liqGo();critMark();tabInd();thSync();morphApply();fxPass();}
 
 
 /* ---- race: อันดับ 10 อันดับแรกรายเดือน + แถบเลื่อน + เล่นย้อนดู ---- */
@@ -831,6 +831,14 @@ function fxPass(){
   const vh=window.innerHeight||800;
   $$('#hp .hp-card').forEach(c=>{c.classList.remove('rv0','rvin');if(c.getBoundingClientRect().top>vh*0.95){c.classList.add('rv0');fxIO.observe(c);}});
 }
+let TH={low:30,over:180};
+try{const t=JSON.parse(localStorage.getItem('stock-th')||'null');if(t&&t.low>=1&&t.low<=365&&t.over>t.low&&t.over<=1000)TH={low:Math.round(t.low),over:Math.round(t.over)};}catch(e){}
+function tabBadge(){const b=$('#hp-tabs button[data-t=order]');if(!b)return;let n=0;try{filt({pc:1,view:1}).forEach(x=>{const k=stat(x).k;if(k==='out'||k==='low')n++;});}catch(e){}let t=b.querySelector('.tb');if(!t){t=document.createElement('b');t.className='tb';t.setAttribute('aria-hidden','true');b.appendChild(t);}t.textContent=n>99?'99+':String(n);t.hidden=!n;b.setAttribute('aria-label','สั่งซื้อวันนี้ '+n+' รายการ');}
+function thSync(){tabBadge();$$('[data-th]').forEach(e=>{e.textContent=TH[e.dataset.th];});const a=$('#th-low'),b=$('#th-over');if(a&&document.activeElement!==a)a.value=TH.low;if(b&&document.activeElement!==b)b.value=TH.over;}
+document.addEventListener('change',e=>{const id=e.target.id;if(id!=='th-low'&&id!=='th-over')return;
+  let lo=+$('#th-low').value,ov=+$('#th-over').value;if(!(lo>=1&&lo<=365))lo=30;if(!(ov>lo&&ov<=1000))ov=Math.max(lo+1,180);
+  TH={low:Math.round(lo),over:Math.round(ov)};try{localStorage.setItem('stock-th',JSON.stringify(TH));}catch(x){}anim='data';go();});
+document.addEventListener('click',e=>{if(e.target.id==='th-reset'){TH={low:30,over:180};try{localStorage.removeItem('stock-th');}catch(x){}anim='data';go();}});
 let lastW=window.innerWidth,rzT=null;
 window.addEventListener('resize',()=>{tabInd();clearTimeout(rzT);rzT=setTimeout(()=>{if(!ready||window.innerWidth===lastW)return;lastW=window.innerWidth;anim=null;redraw();},180);});
 window.addEventListener('orientationchange',()=>{setTimeout(()=>{lastW=-1;window.dispatchEvent(new Event('resize'));},250);});
